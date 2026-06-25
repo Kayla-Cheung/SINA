@@ -38,4 +38,25 @@ class RetrievalEngine:
             memory.last_accessed_at = datetime.now()
         
         scored_memories.sort(key=lambda x: x[0], reverse=True)
-        return [mem for score, mem in scored_memories[:top_k]]
+        top_memories = [mem for score, mem in scored_memories[:top_k]]
+        
+        # --- Quantum Associative Noise (TRPG Dice Roll) ---
+        import random
+        import copy
+        if len(scored_memories) > top_k:
+            dice = random.randint(1, 20)
+            
+            # Extract the bottom 50% of memories (unrelated/noise)
+            bottom_half = [mem for score, mem in scored_memories[len(scored_memories)//2:]]
+            
+            if bottom_half:
+                if dice == 20: # Critical Success (Inspiration)
+                    flashback = copy.copy(random.choice(bottom_half))
+                    flashback.text = f"[灵光一闪/Inspiration] {flashback.text}"
+                    top_memories[-1] = flashback # Replace the least relevant memory in Top-K
+                elif dice == 1: # Critical Failure (Distraction)
+                    distraction = copy.copy(random.choice(bottom_half))
+                    distraction.text = f"[走神/Distraction] {distraction.text}"
+                    top_memories[-1] = distraction
+
+        return top_memories
