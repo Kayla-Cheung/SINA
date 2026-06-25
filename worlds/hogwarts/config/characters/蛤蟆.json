@@ -1,0 +1,16 @@
+{
+  "name": "蛤蟆",
+  "house": "Ravenclaw",
+  "blood_status": "Muggle-born",
+  "personality_traits": [
+    "学计算机的，外表搞笑、言辞滑稽，但实际上极其聪明，脑子转得极快，能瞬间看透系统的漏洞。"
+  ],
+  "interests": [
+    "Potions"
+  ],
+  "inventory": [
+    "Wand",
+    "A mysterious old book"
+  ],
+  "starting_location": "Great Hall"
+}

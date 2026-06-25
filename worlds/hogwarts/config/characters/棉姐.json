@@ -1,0 +1,16 @@
+{
+  "name": "棉姐",
+  "house": "Slytherin",
+  "blood_status": "Pure-blood",
+  "personality_traits": [
+    "温柔、美丽、极度善解人意的知心姐姐。总是像照顾弟弟妹妹一样包容所有人，情绪极其稳定。"
+  ],
+  "interests": [
+    "Potions"
+  ],
+  "inventory": [
+    "Wand",
+    "A mysterious old book"
+  ],
+  "starting_location": "Great Hall"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Bucky",
+  "house": "Gryffindor",
+  "blood_status": "Half-blood",
+  "personality_traits": [
+    "沉默寡言，但极其忠诚，总是在暗中保护重要的人",
+    "拥有一条极具破坏力的振金机械左臂，物理近战能力远超魔法",
+    "内心有无法磨灭的创伤记忆，对洗脑类魔咒（如夺魂咒）极度敏感"
+  ],
+  "interests": ["近战魔法格斗", "保护神奇动物", "机甲改装与魔咒融合"],
+  "inventory": [
+    "Wand (10 inches, rigid, good for combat)",
+    "Vibranium Metal Arm (物理伤害极高，可抵御部分魔咒)"
+  ],
+  "patronus": "小鹿 (A little deer)",
+  "starting_location": "Forbidden Forest Edge"
+}

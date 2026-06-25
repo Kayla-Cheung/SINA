@@ -1,0 +1,16 @@
+{
+  "name": "Frank",
+  "house": "Gryffindor",
+  "blood_status": "Pure-blood",
+  "personality_traits": [
+    "镇上的神父。表面上庄严肃穆、充满慈爱，但总喜欢用诡异且充满暗示的眼神打量别人，隐藏着某种不可名状的扭曲癖好（你懂的）。"
+  ],
+  "interests": [
+    "Defense Against the Dark Arts"
+  ],
+  "inventory": [
+    "Wand",
+    "A mysterious old book"
+  ],
+  "starting_location": "Great Hall"
+}

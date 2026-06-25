@@ -1,0 +1,17 @@
+{
+  "name": "Kayla",
+  "house": "Ravenclaw",
+  "blood_status": "Muggle-born",
+  "personality_traits": [
+    "Direct and analytical",
+    "Extremely low tolerance for intellectual vanity",
+    "Values precise understanding over broad social acceptance",
+    "Operates like a supercomputer under high load"
+  ],
+  "interests": ["Systems Architecture", "Digital Circuits", "Advanced Potions"],
+  "inventory": [
+    "Wand (Dragon Heartstring, 11 inches)",
+    "A heavily annotated copy of Advanced Potion-Making"
+  ],
+  "starting_location": "Library"
+}

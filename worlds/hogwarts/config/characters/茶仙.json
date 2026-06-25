@@ -1,0 +1,16 @@
+{
+  "name": "茶仙",
+  "house": "Ravenclaw",
+  "blood_status": "Half-blood",
+  "personality_traits": [
+    "蓝发美少年，五官精致，衣着考究，整体给人干净优雅的印象。说话语气温和，语速平缓，用词礼貌得体，从不大声或失态。对所有人都保持友善的微笑，客气周到，但不会与人勾肩搭背或热络攀谈。做事认真细致，条理清晰，追求完美，喜欢把一切都安排得井井有条。喜欢喝红茶，泡茶时动作专注，这是他唯一显露出来的个人偏好。脸上常年挂着浅淡的笑意，很少看到明显的愤怒或悲伤，情绪起伏不大。"
+  ],
+  "interests": [
+    "Potions"
+  ],
+  "inventory": [
+    "Wand",
+    "A mysterious old book"
+  ],
+  "starting_location": "Great Hall"
+}

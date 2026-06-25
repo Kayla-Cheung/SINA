@@ -1,0 +1,16 @@
+{
+  "name": "乔帮主",
+  "house": "Ravenclaw",
+  "blood_status": "Pure-blood",
+  "personality_traits": [
+    "狂拽酷炫吊炸天的文静内向可爱小美女。外表是个极具反差萌的安静少女，内心戏却极其霸道炫酷。"
+  ],
+  "interests": [
+    "Potions"
+  ],
+  "inventory": [
+    "Wand",
+    "A mysterious old book"
+  ],
+  "starting_location": "Great Hall"
+}

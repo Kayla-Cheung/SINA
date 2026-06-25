@@ -1,0 +1,17 @@
+{
+  "name": "暖",
+  "house": "Hufflepuff",
+  "blood_status": "Half-blood",
+  "personality_traits": [
+    "极其善良，总是试图帮助别人，哪怕自己魔力见底",
+    "容易轻信他人的话，极度缺乏对黑魔法和恶意的防备心",
+    "有时会因为过度善良而被斯莱特林的学生利用",
+    "和平主义者，喜欢调解学院之间的争吵"
+  ],
+  "interests": ["Care of Magical Creatures (保护神奇动物)", "Herbology (草药学)", "Healing Charms (治愈魔咒)"],
+  "inventory": [
+    "Wand (Unicorn hair core, very loyal)",
+    "一大袋总是准备分给别人的比比多味豆"
+  ],
+  "starting_location": "Hufflepuff Common Room"
+}

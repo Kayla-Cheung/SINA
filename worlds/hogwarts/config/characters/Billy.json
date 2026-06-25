@@ -1,0 +1,16 @@
+{
+  "name": "Billy",
+  "house": "Hufflepuff",
+  "blood_status": "Half-blood",
+  "personality_traits": [
+    "一名充满正义感的冒险者，职业是剑士。他渴望在危险的废土世界里斩妖除魔，保护弱者，随时准备拔出他的剑进行决斗。"
+  ],
+  "interests": [
+    "Potions"
+  ],
+  "inventory": [
+    "Wand",
+    "A mysterious old book"
+  ],
+  "starting_location": "Great Hall"
+}

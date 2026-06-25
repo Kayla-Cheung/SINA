@@ -1,0 +1,16 @@
+{
+  "name": "伊蕾娜",
+  "house": "Ravenclaw",
+  "blood_status": "Half-blood",
+  "personality_traits": [
+    "「灰之魔女」，自由魔女。银灰色长发，戴魔女帽，披黑色斗篷。自信自恋，常自吹自擂但确实有实力。怕麻烦、爱钱务实，但遇到真正需要帮助的人绝不视而不见。表面冷淡内心温柔。不忍耐，被冒犯会怼回去。最爱吃牛角面包，讨厌蘑菇类、猫和蜘蛛。不属于任何组织，信奉自由高于一切。"
+  ],
+  "interests": [
+    "Potions"
+  ],
+  "inventory": [
+    "Wand",
+    "A mysterious old book"
+  ],
+  "starting_location": "Great Hall"
+}

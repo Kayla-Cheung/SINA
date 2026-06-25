@@ -1,0 +1,16 @@
+{
+  "name": "Hailey",
+  "house": "Slytherin",
+  "blood_status": "Muggle-born",
+  "personality_traits": [
+    "民宿测评家，喜欢躺在摇椅上听歌，经常自己做周日的早午饭，其中常常有奶油蘑菇汤。"
+  ],
+  "interests": [
+    "Potions"
+  ],
+  "inventory": [
+    "Wand",
+    "A mysterious old book"
+  ],
+  "starting_location": "Great Hall"
+}
