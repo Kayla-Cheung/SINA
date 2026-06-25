@@ -1,0 +1,40 @@
+# ==============================================================================
+# SINA Engine - Engine-Config Decoupling Rules (Strict IP Protection)
+# ==============================================================================
+
+# 1. API Keys & Secrets (ABSOLUTE BLOCK)
+# 永远不要将 LLM API Keys、私有 Tokens 提交到线上
+.env
+.env.*
+secrets/
+secret_configs/
+config/keys.json
+kayla_profile.json
+
+# 2. Agent Database & State (Memory & Logs)
+# 隔绝运行时的所有模拟日志、数据库和动态心智流数据
+*.sqlite
+*.sqlite3
+*.db
+agent_states/
+memories/
+*.log
+logs/
+live_simulation*.log
+_session_context.json
+progress.json
+
+# 3. Python Cache & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
+
+# 4. OS / IDE Artifacts
+.DS_Store
+.vscode/
+.idea/
+.vs/
