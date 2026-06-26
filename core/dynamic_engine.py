@@ -200,35 +200,51 @@ async def determine_next_action(
 - duration_minutes: 这个行动持续多少分钟（5-30）
 """
 
-    try:
-        response = await client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": "根据当前处境，决定你下一步的行动。"},
-            ],
-            temperature=0.75,
-            max_tokens=400,
-        )
-        raw = response.choices[0].message.content.strip()
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": "根据当前处境，决定你下一步的行动。"},
+    ]
 
-        # 清理 markdown 包裹（```json ... ```）
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
-        raw = re.sub(r"\s*```$", "", raw)
-
-        from action_intent import ActionSchema
-        
+    max_retries = 3
+    for attempt in range(max_retries):
         try:
-            # 【绝对契约】通过 Pydantic 强类型校验 LLM 输出
-            action_obj = ActionSchema.model_validate_json(raw)
-            return action_obj.model_dump()
-        except Exception as pydantic_err:
-            print(f"  ⚠ [{state.name}] Pydantic 契约撕毁 (格式不符): {pydantic_err}")
-            raise  # 触发 fallback 或留给未来的重试回路
+            response = await client.chat.completions.create(
+                model=MODEL,
+                messages=messages,
+                temperature=0.75,
+                max_tokens=400,
+            )
+            raw = response.choices[0].message.content.strip()
 
-    except Exception as e:
-        print(f"  ⚠ [{state.name}] LLM 决策失败: {e}")
-        return _fallback_action(state)
+            # 清理 markdown 包裹（```json ... ```）
+            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+            raw = re.sub(r"\s*```$", "", raw)
+
+            from action_intent import ActionSchema
+            
+            try:
+                # 【绝对契约】通过 Pydantic 强类型校验 LLM 输出
+                action_obj = ActionSchema.model_validate_json(raw)
+                return action_obj.model_dump()
+            except Exception as pydantic_err:
+                print(f"  ⚠ [{state.name}] Pydantic 契约撕毁 (尝试 {attempt+1}/{max_retries}): {pydantic_err}")
+                if attempt == max_retries - 1:
+                    print(f"  💀 [{state.name}] 达到最大重试次数，触发系统熔断，执行降级逻辑。")
+                    raise  # 超过最大重试次数，彻底抛给外层的 fallback
+                
+                # 【自适应容错回路】将错误信息作为上下文，强制 LLM 自我纠错
+                messages.append({"role": "assistant", "content": raw})
+                messages.append({
+                    "role": "user",
+                    "content": f"你的 JSON 输出不符合系统强制契约。抛出了以下 Pydantic 验证错误:\n{pydantic_err}\n请立刻根据错误提示，修正数据类型或补全缺失字段，重新返回纯 JSON。"
+                })
+
+        except Exception as e:
+            # 捕获网络超时或连续3次格式错误，优雅降级
+            print(f"  ⚠ [{state.name}] LLM 决策失败: {e}")
+            return _fallback_action(state)
+
+    return _fallback_action(state)
 
 
 # ──────────────────────────────────────────────
