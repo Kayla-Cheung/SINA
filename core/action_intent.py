@@ -13,27 +13,29 @@ SINA v4 双层架构 · 前文明多智能体仿真
   决定它成为「物理配方」（客观层）还是「信念/模因」（主观层）。
 """
 
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any
+
+class ActionSchema(BaseModel):
+    internal_thought: str = Field(..., description="内心独白")
+    observable_action: str = Field(..., description="可观察行为描述")
+    duration_minutes: int = Field(default=15, description="行动预估耗时（分钟）")
+    move_to: Optional[str] = Field(default=None, description="移动目标房间名")
+    eat_item: Optional[str] = Field(default=None, description="进食物品标签")
+    attack_target: Optional[str] = Field(default=None, description="攻击目标智能体名")
+    craft: Optional[str] = Field(default=None, description="制作配方名")
+    propose_blueprint: Optional[str] = Field(default=None, description="提案内容")
+    vote_on_blueprint: Optional[Dict[str, Any]] = Field(default=None, description="对提案的投票")
+    give_item: Optional[Dict[str, Any]] = Field(default=None, description="赠与物品")
+    take_item_tag: Optional[str] = Field(default=None, description="拾取的物品标签")
+    drop_item_tag: Optional[str] = Field(default=None, description="丢弃的物品标签")
+    produce_item_tag: Optional[str] = Field(default=None, description="直接产出的物品标签")
 
 class ActionIntent:
     """
-    封装单个智能体在一个 tick 内的行动意图。
-
-    raw_action 字典来自 LLM 的 JSON 输出，包含以下可能的字段：
-      - internal_thought:   内心独白（不可被其他智能体观察）
-      - observable_action:  可观察行为描述（会进入其他智能体的感知）
-      - duration_minutes:   行动预估耗时（分钟）
-      - move_to:            移动目标房间名
-      - eat_item:           进食物品标签
-      - attack_target:      攻击目标智能体名
-      - craft:              制作配方名
-      - propose_blueprint:  提案内容（触发 Laplace Oracle）
-      - vote_on_blueprint:  对提案的投票 {proposal_id, vote}
-      - give_item:          赠与 {target, item_tag, count}
-      - take_item_tag:      从房间拾取的物品标签
-      - drop_item_tag:      丢弃的物品标签
-      - produce_item_tag:   直接产出的物品标签（采集类行为）
+    封装单个智能体在一个 tick 内的行动意图，内置了基于 Pydantic Schema 的强类型约束。
     """
-
+    
     # ── 行动类型 → 结算优先级（数字越小越优先） ──
     _PRIORITY_MAP = {
         "attack_target": 0,   # 攻击：最高优先，先手决定生死

@@ -216,12 +216,15 @@ async def determine_next_action(
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
 
-        action = json.loads(raw)
-        # 确保必需字段存在
-        action.setdefault("internal_thought", "……")
-        action.setdefault("observable_action", "沉默地站着")
-        action.setdefault("duration_minutes", 15)
-        return action
+        from action_intent import ActionSchema
+        
+        try:
+            # 【绝对契约】通过 Pydantic 强类型校验 LLM 输出
+            action_obj = ActionSchema.model_validate_json(raw)
+            return action_obj.model_dump()
+        except Exception as pydantic_err:
+            print(f"  ⚠ [{state.name}] Pydantic 契约撕毁 (格式不符): {pydantic_err}")
+            raise  # 触发 fallback 或留给未来的重试回路
 
     except Exception as e:
         print(f"  ⚠ [{state.name}] LLM 决策失败: {e}")
