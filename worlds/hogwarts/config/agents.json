@@ -1,0 +1,20 @@
+{
+  "agents": [
+    {
+      "name": "Harry Potter",
+      "traits": "勇敢、冲动、重视友谊",
+      "intentions": ["探索城堡", "寻找罗恩"],
+      "hunger": 20,
+      "inventory": {"WAND": 1, "INVISIBILITY_CLOAK": 1},
+      "start_room": "Gryffindor Common Room"
+    },
+    {
+      "name": "Draco Malfoy",
+      "traits": "狡猾、傲慢、崇尚纯血",
+      "intentions": ["找哈利的麻烦"],
+      "hunger": 20,
+      "inventory": {"WAND": 1},
+      "start_room": "Slytherin Common Room"
+    }
+  ]
+}

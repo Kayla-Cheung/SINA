@@ -77,39 +77,24 @@ class PhysicsEngine:
     所有结果由硬编码规则 + 随机数决定，不受信念影响。
     """
 
-    def __init__(self):
-        # ── 材料属性表（不可变客观属性） ──
-        self.material_properties: dict = {
-            "RAW_MEAT":    {"nutrition": 12, "spoil_rate": 0.3, "disease_chance": 0.4},
-            "COOKED_MEAT": {"nutrition": 20, "spoil_rate": 0.1, "disease_chance": 0.0},
-            "BERRY":       {"nutrition": 6, "spoil_rate": 0.5, "disease_chance": 0.05},
-            "DIRT":        {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.8},
-            "WATER":       {"nutrition": 1, "spoil_rate": 0.0, "disease_chance": 0.1},
-            "WOOD":        {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 1.0},
-            "STONE":       {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 1.0},
-            "HERB":        {"nutrition": 0, "spoil_rate": 0.2, "disease_chance": 0.0},
-            "TORCH":       {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
-            "SPEAR":       {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
-        }
+    def __init__(self, world_name: str = "stone_age"):
+        import os, json
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        physics_path = os.path.join(base_dir, "worlds", world_name, "config", "physics.json")
+        
+        if os.path.exists(physics_path):
+            with open(physics_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self.material_properties = data.get("material_properties", {})
+            self.terrain_hazards = data.get("terrain_hazards", {})
+            self.weapon_modifiers = data.get("weapon_modifiers", {"FIST": 1.0})
+        else:
+            self.material_properties = {}
+            self.terrain_hazards = {}
+            self.weapon_modifiers = {"FIST": 1.0}
 
         # ── 配方列表（可通过 Laplace Oracle 动态扩展） ──
         self.recipes: list[Recipe] = []
-
-        # ── 地形危险度（夜间野兽袭击概率与伤害） ──
-        self.terrain_hazards: dict = {
-            "Open_Plains":  {"night_predator_chance": 0.3, "predator_damage": 5},
-            "Dense_Forest": {"night_predator_chance": 0.5, "predator_damage": 7},
-            "Riverbank":    {"night_predator_chance": 0.1, "predator_damage": 3},
-            "Dark_Cave":    {"night_predator_chance": 0.0, "predator_damage": 0},
-        }
-
-        # ── 武器伤害倍率 ──
-        self.weapon_modifiers: dict = {
-            "FIST":  1.0,
-            "STONE": 1.5,
-            "SPEAR": 3.0,
-            "TORCH": 2.0,
-        }
 
     # ────────────────────────────────────────
     #  进食结算

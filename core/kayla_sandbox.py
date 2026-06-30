@@ -1,14 +1,11 @@
 import os
 import json
+import asyncio
 from datetime import datetime
 from memory import Memory, calculate_importance
 from retrieval import RetrievalEngine
 from sentence_transformers import SentenceTransformer
-from openai import OpenAI
-
-from dotenv import load_dotenv
-load_dotenv(r"C:\Users\Kayla\Desktop\ai-learning\projects\02-ai-paper-detector\.env")
-client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com")
+from gateway import gateway
 
 def load_json_profile():
     """读取原子化的 JSON 记忆库，保留严格的时间戳属性"""
@@ -17,7 +14,7 @@ def load_json_profile():
         data = json.load(f)
     return data
 
-def run_sandbox():
+async def run_sandbox():
     print("====== 欢迎来到斯坦福小镇：Kayla Agent 沙盒 (v2.0 原子级记忆库) ======\n")
     print("正在加载大脑海马体 (MiniLM)...")
     model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -28,23 +25,22 @@ def run_sandbox():
     memories = []
     for i, item in enumerate(raw_data):
         text = item["text"]
-        # 解析 JSON 里的时间戳字符串为 Python 的 datetime 对象
         mem_time = datetime.strptime(item["timestamp"], "%Y-%m-%d %H:%M:%S")
         
         vector = model.encode(text) 
-        score = calculate_importance(text)
+        score = await calculate_importance(text)
         print(f"[写入] 评分:{score} | 时间:{item['timestamp']} | {text[:40]}...")
         
-        # 将历史时间传给 Memory，激活 Recency 衰减机制
         mem = Memory(memory_id=f"k_mem_{i}", text=text, importance_score=score, embedding_vector=vector, created_at=mem_time)
         memories.append(mem)
 
     print("\n原子化记忆灌注完成！")
     engine = RetrievalEngine()
     
+    # 因为 input() 是同步阻塞的，在 async 中用 asyncio.to_thread 防止阻塞事件循环
     while True:
         print("\n" + "="*50)
-        scenario = input("向沙盒中丢入一个突发事件 (输入 'q' 退出): ")
+        scenario = await asyncio.to_thread(input, "向沙盒中丢入一个突发事件 (输入 'q' 退出): ")
         if scenario.lower() == 'q':
             break
             
@@ -67,16 +63,13 @@ def run_sandbox():
         
         user_prompt = f"RETRIVED MEMORIES:\n{retrieved_context}\n\nCURRENT SCENARIO: {scenario}\n\nHow does Kayla react?"
         
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.3 # 降低温度，减少废话和戏精表现
+        response_text = await gateway.generate_text(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=0.3
         )
         
-        print(f"\n[Kayla 的真实反应]:\n{response.choices[0].message.content.strip()}")
+        print(f"\n[Kayla 的真实反应]:\n{response_text}")
 
 if __name__ == "__main__":
-    run_sandbox()
+    asyncio.run(run_sandbox())

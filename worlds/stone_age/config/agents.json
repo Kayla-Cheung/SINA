@@ -1,0 +1,20 @@
+{
+  "agents": [
+    {
+      "name": "Adam",
+      "traits": "强壮、直率、急躁",
+      "intentions": ["寻找食物避免饿死", "找人说话"],
+      "hunger": 10,
+      "inventory": {"WOOD": 2},
+      "start_room": "Open_Plains"
+    },
+    {
+      "name": "Eve",
+      "traits": "聪明、谨慎、好奇",
+      "intentions": ["制造工具", "收集浆果"],
+      "hunger": 25,
+      "inventory": {"SHARP_STONE": 1},
+      "start_room": "Open_Plains"
+    }
+  ]
+}

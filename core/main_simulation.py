@@ -37,12 +37,25 @@ class SmallvilleSimulation:
     - 主观共识层：MemePool（agent 提案 → Oracle 裁决 → 动态写入）
     """
 
-    def __init__(self):
-        # ── 核心组件初始化 ──
-        self.environment = SandboxEnvironment()
-        self.physics = PhysicsEngine()
+    def __init__(self, world_name: str = "stone_age"):
+        self.terminal = sys.stdout
+        self.world_name = world_name
+        self.environment = SandboxEnvironment(world_name=world_name)
+        self.physics = PhysicsEngine(world_name=world_name)
         self.meme_pool = MemePool()
         self.oracle = LaplaceOracle()
+        
+        # 动态加载 prompt config
+        import os, json
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        prompt_path = os.path.join(base_dir, "worlds", world_name, "config", "prompt.json")
+        if os.path.exists(prompt_path):
+            with open(prompt_path, "r", encoding="utf-8") as f:
+                self.world_prompt = json.load(f)
+        else:
+            self.world_prompt = {"community_term": "群体"}
+            
+        self.community_term = self.world_prompt.get("community_term", "群体")
 
         # ── 模拟时钟 ──
         self.clock = datetime(2026, 1, 1, 6, 0)
@@ -59,15 +72,17 @@ class SmallvilleSimulation:
         # ── tick 计数器 ──
         self.tick_count = 0
 
-        # ── 尝试加载存档，否则从 world_config.json 初始化 ──
+        # ── 尝试加载存档，否则从 agents.json 初始化 ──
         if os.path.exists(self.save_file):
             self._load_world_state(self.save_file)
             print(f"✅ 从存档 {self.save_file} 恢复世界状态")
-        elif os.path.exists("world_config.json"):
-            self._load_from_config("world_config.json")
-            print("✅ 从 world_config.json 初始化新世界")
         else:
-            print("⚠ 未找到存档或配置文件，请创建 world_config.json")
+            agents_path = os.path.join(base_dir, "worlds", world_name, "config", "agents.json")
+            if os.path.exists(agents_path):
+                self._load_from_config(agents_path)
+                print(f"✅ 从 {agents_path} 初始化新世界")
+            else:
+                print(f"⚠ 未找到存档或配置文件，请创建 {agents_path}")
 
     # ──────────────────────────────────────────
     # 存档加载
@@ -92,12 +107,12 @@ class SmallvilleSimulation:
         for agent_data in data.get("agents", []):
             agent = AgentState.from_dict(agent_data)
             self.world_agents[agent.name] = agent
-            last_room = agent_data.get("last_room", "Open_Plains")
+            last_room = agent_data.get("last_room", self.environment.all_nodes()[0].name)
             node = self.environment.get_node_by_name(last_room)
             if node:
                 self.environment.spawn_agent(agent.name, node)
             else:
-                self.environment.spawn_agent(agent.name, self.environment.open_plains)
+                self.environment.spawn_agent(agent.name, self.environment.all_nodes()[0])
 
         self.tick_count = data.get("tick_count", 0)
 
@@ -117,12 +132,12 @@ class SmallvilleSimulation:
             if agent_cfg.get("inventory"):
                 agent.inventory = agent_cfg["inventory"]
             self.world_agents[agent.name] = agent
-            start_room = agent_cfg.get("start_room", "Open_Plains")
+            start_room = agent_cfg.get("start_room", self.environment.all_nodes()[0].name)
             node = self.environment.get_node_by_name(start_room)
             if node:
                 self.environment.spawn_agent(agent.name, node)
             else:
-                self.environment.spawn_agent(agent.name, self.environment.open_plains)
+                self.environment.spawn_agent(agent.name, self.environment.all_nodes()[0])
 
     # ──────────────────────────────────────────
     # 存档保存
@@ -134,7 +149,7 @@ class SmallvilleSimulation:
             agent_dict = agent.to_dict()
             # 记录 agent 最后所在房间（agent_locations 存的是 EnvNode 对象）
             loc_node = self.environment.agent_locations.get(name)
-            agent_dict["last_room"] = loc_node.name if loc_node else "Open_Plains"
+            agent_dict["last_room"] = loc_node.name if loc_node else self.environment.all_nodes()[0].name
             agents_data.append(agent_dict)
 
         state = {
@@ -211,8 +226,10 @@ class SmallvilleSimulation:
                 spawn_amount = 0  # 万物凋零
             
             if spawn_amount > 0:
-                self.environment.dense_forest.inventory["BERRY"] = self.environment.dense_forest.inventory.get("BERRY", 0) + spawn_amount
-                self.environment.open_plains.inventory["BERRY"] = self.environment.open_plains.inventory.get("BERRY", 0) + spawn_amount
+                df = self.environment.get_node_by_name("Dense_Forest")
+                op = self.environment.get_node_by_name("Open_Plains")
+                if df: df.inventory["BERRY"] = df.inventory.get("BERRY", 0) + spawn_amount
+                if op: op.inventory["BERRY"] = op.inventory.get("BERRY", 0) + spawn_amount
                 print(f"    🌿 [{current_season}] 自然界生长了 {spawn_amount} 个浆果")
             elif current_season == "凛冬":
                 if self.tick_count % 4 == 0:
@@ -254,11 +271,11 @@ class SmallvilleSimulation:
 
                 # 构建上下文
                 perception = self.environment.perceive(name)
-                meme_context = self.meme_pool.get_prompt_injection()
+                meme_context = self.meme_pool.get_prompt_injection(community_term=self.community_term)
                 memory_context = get_recent_memory_context(agent)
                 known_recipes = self.physics.get_known_recipes_description()
                 loc_node = self.environment.agent_locations.get(name)
-                current_room = loc_node.name if loc_node else "Open_Plains"
+                current_room = loc_node.name if loc_node else self.environment.all_nodes()[0].name
 
                 # 检查是否有待处理事件或需要重新决策
                 has_pending = len(agent.pending_events) > 0
@@ -291,6 +308,8 @@ class SmallvilleSimulation:
                             current_room=_current_room,
                             active_proposal=_active_prop,
                             known_recipes_desc=_known_recipes,
+                            valid_rooms=[n.name for n in self.environment.all_nodes()],
+                            world_prompt=self.world_prompt,
                         )
                         # 更新 agent 行动计时器
                         duration = action.get("duration_minutes", 15)
@@ -383,7 +402,7 @@ class SmallvilleSimulation:
                                 new_materials = recipe_data.get("new_material_properties", {})
                                 self.physics.material_properties.update(new_materials)
                                 broadcast_msg = (
-                                    f"🔬 部落发明成功！新配方「{new_recipe.name}」"
+                                    f"🔬 {self.community_term}发明成功！新配方「{new_recipe.name}」"
                                     f"已被自然法则验证。{new_recipe.description}"
                                 )
                                 print(f"    🔬 新配方: {new_recipe.name}")
@@ -401,11 +420,11 @@ class SmallvilleSimulation:
                                 )
                                 self.meme_pool.add_meme(new_meme)
                                 broadcast_msg = (
-                                    f"📿 新的部落信念诞生: {new_meme.content}"
+                                    f"📿 新的{self.community_term}信念诞生: {new_meme.content}"
                                 )
                                 print(f"    📿 新模因: {new_meme.content}")
                             else:
-                                broadcast_msg = f"📿 部落共识已形成: {proposal.content}"
+                                broadcast_msg = f"📿 {self.community_term}共识已形成: {proposal.content}"
 
                         # 广播结果
                         for name, agent in self.world_agents.items():
@@ -434,7 +453,7 @@ class SmallvilleSimulation:
                 removed = self.meme_pool.decay_memes(agents_list)
                 if removed:
                     for meme in removed:
-                        decay_msg = f"🧬 部落信念逐渐淡忘: {meme.content}"
+                        decay_msg = f"🧬 {self.community_term}信念逐渐淡忘: {meme.content}"
                         print(f"    {decay_msg}")
                         for name, agent in self.world_agents.items():
                             if not agent.is_dead:
@@ -498,7 +517,7 @@ if __name__ == "__main__":
     print()
 
     sim = SmallvilleSimulation()
-    asyncio.run(sim.run_master_loop(ticks=100))
+    asyncio.run(sim.run_master_loop(ticks=3))
 
     # 恢复标准输出
     sys.stdout = logger.terminal

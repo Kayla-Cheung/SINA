@@ -141,21 +141,21 @@ class MemePool:
     #  Prompt 注入生成
     # ────────────────────────────────────────
 
-    def get_prompt_injection(self) -> str:
+    def get_prompt_injection(self, community_term: str = "群体") -> str:
         """
-        生成信念系统的 prompt 注入文本。
-
-        该文本会被附加到每个智能体的系统提示中，
-        使 LLM 在决策时将这些信念纳入考量。
-        智能体可以私下怀疑，但公开违抗需要勇气。
+        生成用于注入到 LLM prompt 中的信念描述。
+        返回一段带有强调格式的文本，要求智能体在内心中遵守或怀疑。
         """
         if not self.active_memes:
             return ""
 
         lines = [
-            "═══ 部落信念体系 ═══",
-            "以下是部落当前共同持有的信念和规则。",
-            "作为部落成员，你在内心深处了解这些信念。",
+            f"═══ {community_term}信念体系 ═══",
+            f"以下是{community_term}当前共同持有的信念和规则。",
+            f"作为{community_term}成员，你在内心深处了解这些信念。",
+            "你可以选择遵守，也可以在内心中悄悄怀疑，",
+            f"但公开违抗{community_term}共识需要极大的勇气，",
+            "可能会导致你的社会信用（声望）破产。",
             "",
         ]
 

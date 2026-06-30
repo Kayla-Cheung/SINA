@@ -1,12 +1,9 @@
-import os
-from openai import AsyncOpenAI
 from typing import List
+from pydantic import BaseModel, Field
+from gateway import gateway
 
-# 全局初始化大模型
-from dotenv import load_dotenv
-load_dotenv(r"C:\Users\Kayla\Desktop\ai-learning\projects\02-ai-paper-detector\.env")
-
-client = AsyncOpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), base_url="https://api.deepseek.com")
+class InsightResponse(BaseModel):
+    insights: List[str] = Field(..., description="A list of high-level insights")
 
 async def generate_insights(recent_memories: list, count: int = 2) -> List[str]:
     """
@@ -27,34 +24,20 @@ async def generate_insights(recent_memories: list, count: int = 2) -> List[str]:
         "CRITICAL: Do NOT just analyze the agent themselves. Your insights MUST focus on extracting knowledge about OTHER agents (their personalities, motives), complex relationships, hidden world rules, or the overall state of the environment. "
         "Example good insights: 'Bob is hoarding food and cannot be trusted', 'The vampire is afraid of sunlight', 'There is a severe food shortage in the kitchen causing everyone to turn hostile'. "
         "Insights MUST be highly analytical, factual, and strictly derived from the logs provided. "
-        "Format each insight on a new line starting with '- '.\n"
         "RULE: YOUR INSIGHTS MUST BE WRITTEN IN CHINESE (中文)."
     )
     
     user_prompt = f"Recent Logs:\n{memory_context}\n\nGenerate {count} Insights:"
     
-    try:
-        response = await client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.3
-        )
-        
-        content = response.choices[0].message.content.strip()
-        
-        # 简单解析大模型返回的文本，提取出带有 "-" 的独立条目
-        insights = []
-        for line in content.split('\n'):
-            line = line.strip()
-            if line.startswith("-") or line.startswith("*"):
-                # 去掉前面的破折号或星号
-                insights.append(line.lstrip("-* ").strip())
-                
-        return insights
-        
-    except Exception as e:
-        print(f"[反思模块崩溃] {e}")
+    # 走 Gateway 统一调用，自动完成 JSON 强制校验和退避重试
+    response_data = await gateway.generate_structured(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        response_model=InsightResponse
+    )
+    
+    if response_data:
+        return response_data.insights
+    else:
+        print("[反思模块崩溃] Gateway 多次重试后依然失败，返回空数据")
         return []

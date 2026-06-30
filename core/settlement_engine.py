@@ -81,7 +81,7 @@ async def settle_all_intents(
         # ────────────────────────────────────
         # 2. 夜间危险结算
         # ────────────────────────────────────
-        if is_night and current_node.name in ["Open_Plains", "Dense_Forest"]:
+        if is_night:
             has_fire = agent.inventory.get("TORCH", 0) > 0
             hazard_res = physics.resolve_night_hazard(agent, current_node.name, has_fire)
             if hazard_res.get("attacked"):

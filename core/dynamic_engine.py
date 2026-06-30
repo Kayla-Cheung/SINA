@@ -11,23 +11,9 @@ import os
 import json
 import re
 from datetime import datetime
-from dotenv import load_dotenv
-from openai import AsyncOpenAI
-
 from agent_state import AgentState
 from reflection import generate_insights
-
-# ──────────────────────────────────────────────
-# 全局初始化：加载环境变量，创建异步 OpenAI 客户端
-# ──────────────────────────────────────────────
-load_dotenv(dotenv_path=r"C:\Users\Kayla\Desktop\ai-learning\projects\02-ai-paper-detector\.env")
-
-client = AsyncOpenAI(
-    api_key=os.getenv("DEEPSEEK_API_KEY"),
-    base_url="https://api.deepseek.com",
-)
-
-MODEL = "deepseek-chat"
+from gateway import gateway
 
 
 # ──────────────────────────────────────────────
@@ -93,6 +79,8 @@ async def determine_next_action(
     current_room: str,
     active_proposal,
     known_recipes_desc: str,
+    valid_rooms: list[str],
+    world_prompt: dict = None,
 ) -> dict:
     """
     为一个原始人类 agent 生成下一步行动。
@@ -120,20 +108,38 @@ async def determine_next_action(
         inv_items.append(f"{tag}×{count}")
     inv_desc = "、".join(inv_items) if inv_items else "空无一物"
 
+    # ── 动态提取世界规则设定 ──
+    if not world_prompt:
+        world_prompt = {}
+    
+    community_term = world_prompt.get("community_term", "群体")
+    
+    identity_rules = world_prompt.get(
+        "identity_rules", 
+        "你是「{agent_name}」。\n你的性格特征：{traits}\n你的意图：{intentions}"
+    ).format(
+        agent_name=state.name,
+        traits=state.traits,
+        intentions=', '.join(state.intentions) if state.intentions else '尚无明确意图'
+    )
+    
+    survival_rules = world_prompt.get("survival_rules", "")
+    language_rules = world_prompt.get("language_rules", "")
+    format_thought = world_prompt.get("format_thought", "你内心真实的想法")
+    format_action = world_prompt.get("format_action", "你实际做的事，第一人称描述")
+
     # ── 活跃提案描述 ──
     proposal_section = ""
     if active_proposal:
         proposal_section = f"""
-═══ 部落提案（等待你的表决）═══
+═══ {community_term}提案（等待你的表决）═══
 提案者: {active_proposal.proposer}
 内容: {active_proposal.content}
 你可以在 vote_on_blueprint 字段投 "YES" 或 "NO"。
 ══════════════════════════════"""
 
     # ── 系统提示词 ──
-    system_prompt = f"""你是「{state.name}」，一个生活在文明诞生之前的原始人类。
-你的性格特征：{state.traits}
-你的意图：{', '.join(state.intentions) if state.intentions else '尚无明确意图'}
+    system_prompt = f"""{identity_rules}
 
 现在是 {time_str} {period}
 
@@ -144,8 +150,8 @@ async def determine_next_action(
 ▸ 环境感知: {perception}
 ══════════════════════════════
 
-═══ 部落信念（你从他人那里听来的共识）═══
-{meme_context if meme_context else '（目前没有任何部落共识）'}
+═══ {community_term}信念（你从他人那里听来的共识）═══
+{meme_context if meme_context else f'（目前没有任何{community_term}共识）'}
 ══════════════════════════════
 
 ═══ 已知配方 ═══
@@ -156,23 +162,18 @@ async def determine_next_action(
 {memory_context}
 ══════════════════════════════
 
-═══ 生存法则（热力学优先级）═══
-如果你的饥饿度 ≤ 5，你必须把「寻找食物和进食」作为最高优先级！
-饥饿会杀死你。社交、探索、一切其他欲望都排在活命之后。
-* 技巧：在同一个 15 分钟内，你可以同时填写 `"take_item_tag": "BERRY"` 和 `"eat_item": "BERRY"`，系统会先帮你捡起来再让你立刻吃掉。通过 `produce_item_tag` 劳动获取食物也同样适用组合动作。
+═══ 生存法则 ═══
+{survival_rules}
 ══════════════════════════════
 
 ═══ 语言规则 ═══
-你是原始人，词汇量极其有限。
-所有说出口的话必须用【简短的中文句子】，像原始人一样说话。
-例如：「火…好…暖」「那边…有果子」「你…不好…走开」
-内心想法可以更复杂，但外在语言必须原始。
+{language_rules}
 ══════════════════════════════
 
 请严格以如下 JSON 格式回复（不要添加任何 JSON 之外的文字）：
 {{
-  "internal_thought": "（你内心真实的想法，可以复杂，可以怀疑部落信念）",
-  "observable_action": "（你实际做的事 + 说出口的原始中文，第一人称描述）",
+  "internal_thought": "{format_thought}",
+  "observable_action": "{format_action}",
   "duration_minutes": 15,
   "move_to": null,
   "eat_item": null,
@@ -187,7 +188,7 @@ async def determine_next_action(
 }}
 
 字段说明：
-- move_to: 移动目的地，可选 "Dark_Cave" / "Riverbank" / "Dense_Forest" / "Open_Plains" / "Hilltop"，或 null
+- move_to: 移动目的地，可选 {' / '.join([f'"{r}"' for r in valid_rooms])}，或 null
 - eat_item: 要吃的物品 tag（从你的背包中），或 null
 - attack_target: 要攻击的对象名字（必须在同一房间），或 null
 - craft: 要制作的配方名称，或 null
@@ -200,50 +201,19 @@ async def determine_next_action(
 - duration_minutes: 这个行动持续多少分钟（5-30）
 """
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": "根据当前处境，决定你下一步的行动。"},
-    ]
-
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = await client.chat.completions.create(
-                model=MODEL,
-                messages=messages,
-                temperature=0.75,
-                max_tokens=400,
-            )
-            raw = response.choices[0].message.content.strip()
-
-            # 清理 markdown 包裹（```json ... ```）
-            raw = re.sub(r"^```(?:json)?\s*", "", raw)
-            raw = re.sub(r"\s*```$", "", raw)
-
-            from action_intent import ActionSchema
-            
-            try:
-                # 【绝对契约】通过 Pydantic 强类型校验 LLM 输出
-                action_obj = ActionSchema.model_validate_json(raw)
-                return action_obj.model_dump()
-            except Exception as pydantic_err:
-                print(f"  ⚠ [{state.name}] Pydantic 契约撕毁 (尝试 {attempt+1}/{max_retries}): {pydantic_err}")
-                if attempt == max_retries - 1:
-                    print(f"  💀 [{state.name}] 达到最大重试次数，触发系统熔断，执行降级逻辑。")
-                    raise  # 超过最大重试次数，彻底抛给外层的 fallback
-                
-                # 【自适应容错回路】将错误信息作为上下文，强制 LLM 自我纠错
-                messages.append({"role": "assistant", "content": raw})
-                messages.append({
-                    "role": "user",
-                    "content": f"你的 JSON 输出不符合系统强制契约。抛出了以下 Pydantic 验证错误:\n{pydantic_err}\n请立刻根据错误提示，修正数据类型或补全缺失字段，重新返回纯 JSON。"
-                })
-
-        except Exception as e:
-            # 捕获网络超时或连续3次格式错误，优雅降级
-            print(f"  ⚠ [{state.name}] LLM 决策失败: {e}")
-            return _fallback_action(state)
-
+    from action_intent import ActionSchema
+    
+    action_obj = await gateway.generate_structured(
+        system_prompt=system_prompt,
+        user_prompt="根据当前处境，决定你下一步的行动。",
+        response_model=ActionSchema,
+        temperature=0.75
+    )
+    
+    if action_obj:
+        return action_obj.model_dump()
+    
+    print(f"  ⚠ [{state.name}] Gateway 决策失败，触发安全兜底")
     return _fallback_action(state)
 
 

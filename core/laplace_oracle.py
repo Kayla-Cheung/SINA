@@ -8,14 +8,7 @@ laplace_oracle.py — SINA v4 拉普拉斯妖判定模块
 """
 
 import json
-import os
-from openai import AsyncOpenAI
-from dotenv import load_dotenv
-
-# 从指定路径加载 .env 文件
-load_dotenv(dotenv_path=r"C:\Users\Kayla\Desktop\ai-learning\projects\02-ai-paper-detector\.env")
-
-# 拉普拉斯妖的系统提示词：严格物理学家
+from gateway import gateway
 LAPLACE_SYSTEM_PROMPT = """\
 你是一个严格的物理学家，同时也是宇宙的沉默仲裁者（拉普拉斯妖）。
 你的任务是判定一个前文明石器时代世界中的智能体提出的方案是否在物理上可行。
@@ -91,12 +84,7 @@ class LaplaceOracle:
     """
 
     def __init__(self):
-        """初始化 AsyncOpenAI 客户端（DeepSeek API）"""
-        self.client = AsyncOpenAI(
-            api_key=os.getenv("DEEPSEEK_API_KEY"),
-            base_url="https://api.deepseek.com",
-        )
-        self.model = "deepseek-chat"
+        pass
 
     async def judge(
         self,
@@ -121,20 +109,17 @@ class LaplaceOracle:
         )
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": LAPLACE_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_message},
-                ],
-                temperature=0.0,  # 物理判定不需要创造力
+            raw_text = await gateway.generate_text(
+                system_prompt=LAPLACE_SYSTEM_PROMPT,
+                user_prompt=user_message,
+                temperature=0.0
             )
 
-            raw_text = response.choices[0].message.content.strip()
+            if not raw_text:
+                return self._default_superstition(proposal_content)
 
-            # 清理 markdown 代码块包装（LLM 有时会加 ```json ... ```）
+            # 清理 markdown 代码块包装
             if raw_text.startswith("```"):
-                # 移除首行（```json）和末行（```）
                 lines = raw_text.split('\n')
                 lines = [l for l in lines if not l.strip().startswith('```')]
                 raw_text = '\n'.join(lines)
