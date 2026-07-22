@@ -1,27 +1,46 @@
-# SINA: Social Intelligence Network Architecture
+# SINA (Simulated Intelligent Network Architecture)
 
-**SINA** is not just an agentic framework; it is a computational crucible for sociological emergence. Designed from First Principles, SINA operates as a highly concurrent, fully decoupled directed acyclic graph (DAG) engine where LLM-driven agents interact within a mathematically strictly bound physical and economic topology. 
+SINA is a data-driven, highly abstracted Multi-Agent Sandbox Engine built for simulating complex sociological and physical interactions. It separates the **Simulation Engine (Core)** from the **World Configuration (Data)**, allowing you to plug in your own worlds, characters, and rules without modifying the underlying physics or cognitive loops.
 
-It rejects the fragile, linear `while True` loops of conventional agent simulations. Instead, it relies on asynchronous state machines, fine-grained spatial concurrency locks (Mutex), and a multi-layered tracing architecture to observe how hierarchical structures, alienation, and consensus protocols natively emerge from primitive neural actors.
+## 🏗 Architecture (Engine-Config Decoupling)
 
-## Architectural Axioms
+SINA is designed strictly with a dual-layer architecture:
+- **`core/`**: The immutable physics and cognitive engine (DAG execution, Memory, Parallax Shield).
+- **`worlds/`**: The data layer. This is where you inject your specific IPs, character prompts, and environment states.
 
-1. **Absolute Engine-Config Decoupling (First Principles)**
-   The core engine (`core/`) is a sterile, agnostic simulation vessel. It contains zero domain logic, zero string hardcoding, and zero narrative assumptions. All sociological, linguistic, and material realities are injected dynamically via world configurations (`worlds/`). The engine does not know if it is rendering the Paleolithic era or a Wizarding academy—it only computes vectors and rules.
+## 🚀 Quick Start
 
-2. **Asynchronous DAG State Machine (The Cognitive Loop)**
-   Agent life-cycles are orchestrated as non-blocking DAGs. When an agent experiences cognitive delay (network latency during LLM reasoning), the orchestrator yields the execution thread. This allows massive parallel simulation (Stanford Smallville baseline scale) without thread-blocking deadlocks.
+### 1. Installation
+Clone the repository and install dependencies:
+```bash
+git clone https://github.com/your-username/SINA.git
+cd SINA
+pip install -r requirements.txt
+```
 
-3. **Spatial & Material Concurrency (Fine-Grained Mutex)**
-   Two agents reaching for the same `RAW_MEAT` in the same room at the exact same millisecond will trigger the spatial concurrency manager. SINA implements dynamic resource locks (`asyncio.Lock`) generated at runtime to strictly enforce physical scarcity and prevent dirty writes in the world state.
+### 2. Environment Variables
+Copy the `.env.example` file to create your local `.env`:
+```bash
+cp .env.example .env
+```
+Fill in your `DEEPSEEK_API_KEY` or other LLM keys inside `.env`.
 
-4. **Sociological Middleware (The Prompt Injector)**
-   The belief system (Memes) and identity constraints (Traits/Intentions) are decoupled into a dedicated `prompt.json`. This acts as a middleware that maps abstract LLM tensors into specific cultural syntaxes, ensuring that agent dialogue and reasoning remain structurally sound and culturally isolated.
+### 3. Create Your World
+Do **not** modify files in `core/`. Instead, build your world in the `worlds/` directory.
+1. Copy the `worlds/template/` directory to create a new world (e.g., `worlds/my_world/`).
+2. Define your agents, social rules, and map in the config JSON files inside your new world directory.
 
-## The Objective
-SINA was built to investigate a singular thesis: If we constrain neural agents with absolute physical scarcity (Hunger, Hazards) and grant them unrestricted cognitive reflection, will they spontaneously invent the constructs of power, class, and exploitation?
+### 4. Run the Simulation
+Execute the main engine and point it to your world:
+```bash
+python core/main_simulation.py --world worlds/my_world
+```
 
-This is not a toy sandbox. It is an infrastructure for generative sociology.
+## 🧠 Core Systems
 
----
-*Created by Kayla - Systems Architect & AI Sociologist*
+- **DAG Engine**: Replaces traditional `while True` loops with a Directed Acyclic Graph state machine for concurrent, lock-safe agent actions.
+- **Parallax Shield**: An underlying interceptor network that guarantees safe boundaries and physics constraints within the sandbox.
+- **Laplace Oracle**: Evaluates global states and injects macro-level sociological events into the simulation.
+
+## 📜 License
+MIT License. Feel free to fork and build your own simulated universes.
