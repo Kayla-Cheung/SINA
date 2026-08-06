@@ -1,4 +1,4 @@
-# SINA (Simulated Intelligent Network Architecture)
+# SINA Framework (Society Inspired Neural Architecture)
 
 SINA is a data-driven, highly abstracted Multi-Agent Sandbox Engine built for simulating complex sociological and physical interactions. It separates the **Simulation Engine (Core)** from the **World Configuration (Data)**, allowing you to plug in your own worlds, characters, and rules without modifying the underlying physics or cognitive loops.
 
