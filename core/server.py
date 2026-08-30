@@ -4,7 +4,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import uvicorn
-from main_simulation import SmallvilleSimulation
+from dag_simulation import DAGSmallvilleSimulation as SmallvilleSimulation
 from dag_engine import DAGEngine
 
 app = FastAPI(title="SINA Stage 4 Dashboard API")
@@ -81,4 +81,4 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 if __name__ == "__main__":
-    uvicorn.run("server.py:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False)

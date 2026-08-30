@@ -2,8 +2,126 @@ import asyncio
 import sys
 from datetime import timedelta
 
-from main_simulation import SmallvilleSimulation, DualLogger
+
 from dag_engine import DAGEngine, DAGNode, NodeResult
+
+
+import os
+import sys
+import json
+from datetime import datetime
+
+class DualLogger:
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        self.log = open(filename, "w", encoding="utf-8")
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+    def close(self):
+        self.log.close()
+
+from environment import SandboxEnvironment
+from physics_engine import PhysicsEngine
+from meme_pool import MemePool
+from laplace_oracle import LaplaceOracle
+from agent_state import AgentState
+
+class SinaSimulation:
+    def __init__(self, world_name: str = "stone_age"):
+        self.terminal = sys.stdout
+        self.world_name = world_name
+        self.environment = SandboxEnvironment(world_name=world_name)
+        self.physics = PhysicsEngine(world_name=world_name)
+        self.meme_pool = MemePool()
+        self.oracle = LaplaceOracle()
+        
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        prompt_path = os.path.join(base_dir, "worlds", world_name, "config", "prompt.json")
+        if os.path.exists(prompt_path):
+            with open(prompt_path, "r", encoding="utf-8") as f:
+                self.world_prompt = json.load(f)
+        else:
+            self.world_prompt = {"community_term": "群体"}
+            
+        self.community_term = self.world_prompt.get("community_term", "群体")
+        self.clock = datetime(2026, 1, 1, 6, 0)
+        self.active_proposal = [None]
+        self.world_agents = {}
+        self.save_file = "world_state_v3_backup.json"
+        self.tick_count = 0
+
+        if os.path.exists(self.save_file):
+            self._load_world_state(self.save_file)
+            print(f"✅ 从存档 {self.save_file} 恢复世界状态")
+        else:
+            agents_path = os.path.join(base_dir, "worlds", world_name, "config", "agents.json")
+            if os.path.exists(agents_path):
+                self._load_from_config(agents_path)
+                print(f"✅ 从 {agents_path} 初始化新世界")
+            else:
+                print(f"⚠ 未找到存档或配置文件，请创建 {agents_path}")
+
+    def _load_world_state(self, filename: str):
+        with open(filename, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.clock = datetime.fromisoformat(data["clock"])
+        if "physics" in data:
+            self.physics = PhysicsEngine.from_dict(data["physics"])
+        if "meme_pool" in data:
+            self.meme_pool = MemePool.from_dict(data["meme_pool"])
+        for agent_data in data.get("agents", []):
+            agent = AgentState.from_dict(agent_data)
+            self.world_agents[agent.name] = agent
+            last_room = agent_data.get("last_room", self.environment.all_nodes()[0].name)
+            node = self.environment.get_node_by_name(last_room)
+            if node:
+                self.environment.spawn_agent(agent.name, node)
+            else:
+                self.environment.spawn_agent(agent.name, self.environment.all_nodes()[0])
+        self.tick_count = data.get("tick_count", 0)
+
+    def _load_from_config(self, config_path: str):
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        for agent_cfg in config.get("agents", []):
+            agent = AgentState(
+                name=agent_cfg["name"],
+                traits=agent_cfg.get("traits", "普通原始人"),
+                intentions=agent_cfg.get("intentions", []),
+                start_time=self.clock,
+            )
+            agent.hunger = agent_cfg.get("hunger", 30)
+            if agent_cfg.get("inventory"):
+                agent.inventory = agent_cfg["inventory"]
+            self.world_agents[agent.name] = agent
+            start_room = agent_cfg.get("start_room", self.environment.all_nodes()[0].name)
+            node = self.environment.get_node_by_name(start_room)
+            if node:
+                self.environment.spawn_agent(agent.name, node)
+            else:
+                self.environment.spawn_agent(agent.name, self.environment.all_nodes()[0])
+
+    def save_world_state(self, filename: str = "world_state_v3_backup.json"):
+        agents_data = []
+        for name, agent in self.world_agents.items():
+            agent_dict = agent.to_dict()
+            loc_node = self.environment.agent_locations.get(name)
+            agent_dict["last_room"] = loc_node.name if loc_node else self.environment.all_nodes()[0].name
+            agents_data.append(agent_dict)
+            
+        data = {
+            "clock": self.clock.isoformat(),
+            "physics": self.physics.to_dict(),
+            "meme_pool": self.meme_pool.to_dict(),
+            "agents": agents_data,
+            "tick_count": self.tick_count
+        }
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
 
 from action_intent import ActionIntent
 from dynamic_engine import determine_next_action, get_recent_memory_context, store_observation
@@ -300,7 +418,7 @@ class ClockTickNode(DAGNode):
 # 2. 模拟器继承与重载
 # ══════════════════════════════════════════════════
 
-class DAGSmallvilleSimulation(SmallvilleSimulation):
+class DAGSmallvilleSimulation(SinaSimulation):
     """
     继承原有的存档读写和变量定义。
     抛弃旧的 run_master_loop，注入纯净的 DAGEngine 作为世界驱动心脏。
