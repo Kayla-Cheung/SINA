@@ -77,7 +77,7 @@ class PhysicsEngine:
     所有结果由硬编码规则 + 随机数决定，不受信念影响。
     """
 
-    def __init__(self, world_name: str = "stone_age"):
+    def __init__(self, world_name: str = "smallville"):
         import os, json
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         physics_path = os.path.join(base_dir, "worlds", world_name, "config", "physics.json")

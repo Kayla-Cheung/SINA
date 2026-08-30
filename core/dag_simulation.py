@@ -31,7 +31,7 @@ from laplace_oracle import LaplaceOracle
 from agent_state import AgentState
 
 class SinaSimulation:
-    def __init__(self, world_name: str = "stone_age"):
+    def __init__(self, world_name: str = "smallville"):
         self.terminal = sys.stdout
         self.world_name = world_name
         self.environment = SandboxEnvironment(world_name=world_name)
@@ -289,9 +289,11 @@ class PhysicsSettleNode(DAGNode):
                 clock=sim.clock,
                 is_night=is_night,
             )
+            sim.current_logs = logs
             for log_line in logs:
                 print(log_line)
         else:
+            sim.current_logs = []
             print("    （本 tick 无行动需要结算）")
             
         return NodeResult(next_node="OracleJudge")

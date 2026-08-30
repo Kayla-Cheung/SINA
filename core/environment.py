@@ -34,7 +34,7 @@ class SandboxEnvironment:
     """
     沙盒环境：管理整个前文明的拓扑结构与资源。
     """
-    def __init__(self, world_name: str = "stone_age"):
+    def __init__(self, world_name: str = "smallville"):
         self.root = EnvNode('World_Matrix')
         self.agent_locations: dict[str, EnvNode] = {}
         
