@@ -1,0 +1,88 @@
+{
+  "nodes": [
+    {
+      "id": "room_Open_Plains",
+      "type": "file",
+      "file": "Rooms/Open_Plains.md",
+      "x": 0,
+      "y": 0,
+      "width": 320,
+      "height": 240,
+      "color": "4"
+    },
+    {
+      "id": "room_Dark_Cave",
+      "type": "file",
+      "file": "Rooms/Dark_Cave.md",
+      "x": 400,
+      "y": 0,
+      "width": 320,
+      "height": 240,
+      "color": "4"
+    },
+    {
+      "id": "room_Dense_Forest",
+      "type": "file",
+      "file": "Rooms/Dense_Forest.md",
+      "x": 800,
+      "y": 0,
+      "width": 320,
+      "height": 240,
+      "color": "4"
+    },
+    {
+      "id": "room_Riverbank",
+      "type": "file",
+      "file": "Rooms/Riverbank.md",
+      "x": 0,
+      "y": 320,
+      "width": 320,
+      "height": 240,
+      "color": "4"
+    },
+    {
+      "id": "room_Hilltop",
+      "type": "file",
+      "file": "Rooms/Hilltop.md",
+      "x": 400,
+      "y": 320,
+      "width": 320,
+      "height": 240,
+      "color": "4"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_0",
+      "fromNode": "room_Open_Plains",
+      "fromSide": "right",
+      "toNode": "room_Dark_Cave",
+      "toSide": "left",
+      "label": "Portal"
+    },
+    {
+      "id": "edge_1",
+      "fromNode": "room_Dark_Cave",
+      "fromSide": "right",
+      "toNode": "room_Dense_Forest",
+      "toSide": "left",
+      "label": "Portal"
+    },
+    {
+      "id": "edge_2",
+      "fromNode": "room_Dense_Forest",
+      "fromSide": "right",
+      "toNode": "room_Riverbank",
+      "toSide": "left",
+      "label": "Portal"
+    },
+    {
+      "id": "edge_3",
+      "fromNode": "room_Riverbank",
+      "fromSide": "right",
+      "toNode": "room_Hilltop",
+      "toSide": "left",
+      "label": "Portal"
+    }
+  ]
+}

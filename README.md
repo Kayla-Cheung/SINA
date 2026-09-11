@@ -71,8 +71,9 @@ graph TD
 * **Parallel Intention Generation**: Agents evaluate environmental stimuli asynchronously via `AgentThinkNode`.
 * **Deterministic Physics Settlement**: Physical conflicts (e.g., competing for limited food or attacking) pass through `concurrency_lock.py` and `settlement_engine.py`, enforcing physical laws that subjective beliefs cannot override.
 
-### 3. Spatial Topology & Frontend Observer (`frontend/`)
-* Headless simulation state is streamed over WebSockets to a React + Tailwind + Vite observation dashboard with real-time map topology, memory inspectors, and chat logs.
+### 3. Spatial Topology & Dual Observer Visualizers
+* **Obsidian-Native Force-Directed Star Map (`sina.observer`)**: Transforms live simulation states into interconnected Markdown notes with bidirectional `[[wikilinks]]`, YAML metadata, and 2D `.canvas` topologies. Open `obsidian_vault/` in Obsidian (`Ctrl + G`) to inspect social light-cones and memory graphs via native GPU-accelerated force physics.
+* **Web UI Dashboard (`frontend/`)**: Headless simulation state can also stream over WebSockets to a React + Tailwind + Vite observation dashboard with real-time map topology and memory inspectors.
 
 ---
 
@@ -80,7 +81,8 @@ graph TD
 
 ### Prerequisites
 * Python 3.11+
-* Node.js 18+ (for frontend dashboard)
+* Obsidian (optional, for native Star Map visualizer)
+* Node.js 18+ (optional, for web frontend dashboard)
 
 ### 1. Installation
 ```bash
@@ -98,11 +100,19 @@ cp .env.example .env
 
 ### 2. Run Test Suite
 ```bash
-# Verify SINA v4 Memory Hierarchy & Bifurcation engine
+# Verify SINA v4 Memory Hierarchy, Core Physics, & Obsidian Observer
 pytest sina/tests/ -v
 ```
 
-### 3. Launch Simulation Server & Observer
+### 3. Launch Simulation with Obsidian Star Map (Recommended)
+```bash
+# Step 1: Open Obsidian -> "Open folder as vault" -> select the `obsidian_vault/` folder
+# Step 2: In Obsidian, press Ctrl + G (Global Graph) or open World_Canvas.canvas
+# Step 3: Launch interactive discrete simulation
+python sandboxes/run_obsidian_simulation.py
+```
+
+### 4. Alternative: Launch Web Server & Dashboard
 ```bash
 # Terminal 1: Launch Backend Engine
 cd core

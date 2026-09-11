@@ -1,0 +1,42 @@
+{
+  "collapse-filter": false,
+  "search": "",
+  "showTags": true,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "tag:#agent",
+      "color": {"a": 1, "rgb": 3394611}
+    },
+    {
+      "query": "tag:#room",
+      "color": {"a": 1, "rgb": 43690}
+    },
+    {
+      "query": "tag:#memory",
+      "color": {"a": 1, "rgb": 11141375}
+    },
+    {
+      "query": "tag:#event",
+      "color": {"a": 1, "rgb": 16737843}
+    },
+    {
+      "query": "tag:#item",
+      "color": {"a": 1, "rgb": 16766720}
+    }
+  ],
+  "collapse-display": false,
+  "showArrow": true,
+  "textFadeMultiplier": 0,
+  "nodeSizeMultiplier": 1.2,
+  "lineSizeMultiplier": 1,
+  "collapse-forces": false,
+  "centerStrength": 0.45,
+  "repelStrength": 12,
+  "linkStrength": 0.8,
+  "linkDistance": 80,
+  "scale": 1
+}

@@ -215,7 +215,10 @@ async def settle_all_intents(
         propose_bp = action.get("propose_blueprint")
         if propose_bp and active_proposal is not None:
             if active_proposal[0] is None:
-                from action_intent import Proposal
+                try:
+                    from .action_intent import Proposal
+                except ImportError:
+                    from action_intent import Proposal
                 active_proposal[0] = Proposal(agent_name, propose_bp)
                 feedback_events.append(f"[提案发布] 你成功发起了新提案: '{propose_bp}'。")
                 logs.append(f"  [提案发起] {agent_name} 提出了提案: '{propose_bp}'")
