@@ -1,0 +1,40 @@
+{
+  "name": "World_Matrix",
+  "children": [
+    {
+      "name": "Wildlands",
+      "children": [
+        {
+          "name": "Open_Plains",
+          "description": "开阔的平原。视野极佳，长满了可以食用的浆果。",
+          "objects": ["高高的草丛", "几棵孤树"],
+          "inventory": {"BERRY": 20}
+        },
+        {
+          "name": "Dark_Cave",
+          "description": "阴暗的山洞。适合躲避野兽，但深处可能潜伏着危险。",
+          "objects": ["钟乳石", "野兽的骨骸"],
+          "inventory": {"SHARP_STONE": 5}
+        },
+        {
+          "name": "Dense_Forest",
+          "description": "茂密的森林。拥有丰富的木材资源，但容易迷路。",
+          "objects": ["参天大树", "藤蔓"],
+          "inventory": {"WOOD": 15, "BERRY": 5}
+        },
+        {
+          "name": "Riverbank",
+          "description": "湍急的河畔。水源充足，河床上散落着锋利的石头。",
+          "objects": ["清澈的河水", "被水流冲刷的圆石"],
+          "inventory": {"SHARP_STONE": 10, "WATER": 99}
+        },
+        {
+          "name": "Hilltop",
+          "description": "高耸的山顶。可以俯瞰整个部落，是祭祀或仰望星空的好地方。",
+          "objects": ["巨大的祭祀石", "凛冽的山风"],
+          "inventory": {}
+        }
+      ]
+    }
+  ]
+}

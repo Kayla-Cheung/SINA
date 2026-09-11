@@ -1,0 +1,24 @@
+{
+  "material_properties": {
+    "COFFEE": {"nutrition": 2, "spoil_rate": 0.05, "disease_chance": 0.0},
+    "PASTRY": {"nutrition": 10, "spoil_rate": 0.2, "disease_chance": 0.0},
+    "COFFEE_BEANS": {"nutrition": 0, "spoil_rate": 0.01, "disease_chance": 0.0},
+    "LAPTOP": {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
+    "MONEY": {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
+    "BOOK": {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
+    "BREAD": {"nutrition": 8, "spoil_rate": 0.1, "disease_chance": 0.0},
+    "WATER": {"nutrition": 2, "spoil_rate": 0.0, "disease_chance": 0.0},
+    "APPLE": {"nutrition": 5, "spoil_rate": 0.15, "disease_chance": 0.0},
+    "MEDICINE": {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
+    "CHALK": {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0}
+  },
+  "terrain_hazards": {
+    "Cafe": {"night_predator_chance": 0.0, "predator_damage": 0},
+    "Library": {"night_predator_chance": 0.0, "predator_damage": 0},
+    "Park": {"night_predator_chance": 0.0, "predator_damage": 0},
+    "Supermarket": {"night_predator_chance": 0.0, "predator_damage": 0},
+    "Hospital": {"night_predator_chance": 0.0, "predator_damage": 0},
+    "School": {"night_predator_chance": 0.0, "predator_damage": 0}
+  },
+  "weapon_modifiers": {}
+}

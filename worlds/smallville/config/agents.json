@@ -1,0 +1,52 @@
+{
+  "agents": [
+    {
+      "name": "Isabella",
+      "traits": "热情、专注、经营一家咖啡馆",
+      "intentions": ["准备开始营业", "整理咖啡馆的桌椅"],
+      "hunger": 80,
+      "inventory": {"COFFEE_BEANS": 10},
+      "start_room": "Cafe"
+    },
+    {
+      "name": "Tom",
+      "traits": "内向、喜欢安静、自由撰稿人",
+      "intentions": ["寻找创作灵感", "在安静的地方写小说"],
+      "hunger": 75,
+      "inventory": {"LAPTOP": 1, "MONEY": 50},
+      "start_room": "Library"
+    },
+    {
+      "name": "Klaus",
+      "traits": "充满活力、求知欲强、在校大学生",
+      "intentions": ["准备即将到来的期末考试", "在户外复习资料"],
+      "hunger": 70,
+      "inventory": {"BOOK": 2, "MONEY": 20},
+      "start_room": "Park"
+    },
+    {
+      "name": "Maria",
+      "traits": "细心、热爱自然、植物学家",
+      "intentions": ["观察并记录当季植物的生长状态", "享受户外的空气"],
+      "hunger": 85,
+      "inventory": {"NOTEBOOK": 1},
+      "start_room": "Park"
+    },
+    {
+      "name": "Sam",
+      "traits": "务实、动手能力强、小镇修理工",
+      "intentions": ["先买杯喝的提神", "检查镇上公共设施是否有损坏"],
+      "hunger": 65,
+      "inventory": {"TOOLBOX": 1, "MONEY": 30},
+      "start_room": "Cafe"
+    },
+    {
+      "name": "Ryan",
+      "traits": "焦虑、工作狂、远程软件工程师",
+      "intentions": ["尽快修复代码 Bug", "找一个没人的地方专心工作"],
+      "hunger": 60,
+      "inventory": {"LAPTOP": 1, "MONEY": 100},
+      "start_room": "Library"
+    }
+  ]
+}

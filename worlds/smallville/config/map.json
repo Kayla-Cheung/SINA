@@ -1,0 +1,46 @@
+{
+  "name": "Smallville",
+  "children": [
+    {
+      "name": "Downtown",
+      "children": [
+        {
+          "name": "Cafe",
+          "description": "小镇上唯一的咖啡馆，环境温馨，提供热咖啡和糕点。",
+          "objects": ["咖啡机", "收银台", "几张木桌"],
+          "inventory": {"COFFEE": 50, "PASTRY": 20}
+        },
+        {
+          "name": "Library",
+          "description": "安静的镇图书馆，有很多藏书和供人阅读的桌子。",
+          "objects": ["书架", "安静的阅读区"],
+          "inventory": {"BOOK": 100}
+        },
+        {
+          "name": "Park",
+          "description": "小镇中央的公园，有长椅和喷泉，是居民散步的好地方。",
+          "objects": ["长椅", "喷泉", "鸽子"],
+          "inventory": {}
+        },
+        {
+          "name": "Supermarket",
+          "description": "小镇的生活超市，商品琳琅满目，满足日常所需。",
+          "objects": ["货架", "收银通道", "购物车"],
+          "inventory": {"BREAD": 50, "WATER": 100, "APPLE": 30}
+        },
+        {
+          "name": "Hospital",
+          "description": "小镇诊所，提供基础的医疗服务，有一股淡淡的消毒水味。",
+          "objects": ["病床", "医药柜", "等候椅"],
+          "inventory": {"MEDICINE": 20}
+        },
+        {
+          "name": "School",
+          "description": "小镇的公立学校，操场上空旷安静，教室里有整齐的课桌椅。",
+          "objects": ["黑板", "课桌椅", "操场跑道"],
+          "inventory": {"CHALK": 10, "BOOK": 50}
+        }
+      ]
+    }
+  ]
+}
