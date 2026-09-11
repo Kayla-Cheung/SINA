@@ -13,7 +13,7 @@ tags: [room, place, spatial_node]
 - [[Agents/Gamma_Scholar]]
 
 ## 📦 空间物资 (Inventory)
-- [[Items/WOOD]] × 15
+- **WOOD** × 15
 
 ## 🚪 连通区域 (Connected Portals)
 - [[Rooms/Open_Plains]]

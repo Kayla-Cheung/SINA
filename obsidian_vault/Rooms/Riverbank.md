@@ -11,8 +11,8 @@ tags: [room, place, spatial_node]
 - *(空无一人)*
 
 ## 📦 空间物资 (Inventory)
-- [[Items/SHARP_STONE]] × 10
-- [[Items/WATER]] × 99
+- **SHARP_STONE** × 10
+- **WATER** × 99
 
 ## 🚪 连通区域 (Connected Portals)
 - [[Rooms/Open_Plains]]

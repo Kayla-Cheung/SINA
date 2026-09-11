@@ -19,14 +19,14 @@ tags: [dashboard, ssot_root]
 - [[Agents/Beta_Hunter]] (`弯腰采集地上的新鲜浆果`)
 - [[Agents/Gamma_Scholar]] (`弯腰采集地上的新鲜浆果`)
 - [[Agents/Delta_Survivor]] (`举手赞同首领的篝火提案`)
-- [[Agents/Epsilon_Rebel]] (`弯腰采集地上的新鲜浆果`)
+- [[Agents/Epsilon_Rebel]] (`正在狼吞虎咽地吃 BERRY`)
 
 ## 🏛️ 空间拓扑 (Spatial Grid)
-- [[Rooms/Open_Plains]] (在场: 0人)
+- [[Rooms/Open_Plains]] (在场: 1人)
 - [[Rooms/Dark_Cave]] (在场: 1人)
 - [[Rooms/Dense_Forest]] (在场: 3人)
 - [[Rooms/Riverbank]] (在场: 0人)
-- [[Rooms/Hilltop]] (在场: 1人)
+- [[Rooms/Hilltop]] (在场: 0人)
 
 ## 💡 Obsidian 星图操作指引 (Star Map Guide)
 1. **快捷键 `Ctrl + G` (或 `Cmd + G`)**：打开全局星图（Global Graph）；

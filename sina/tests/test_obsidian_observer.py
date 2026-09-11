@@ -40,7 +40,7 @@ class MockSim:
 
 def test_obsidian_vault_sync_and_file_structure():
     with tempfile.TemporaryDirectory() as tmp_dir:
-        observer = ObsidianVaultObserver(vault_dir=tmp_dir)
+        observer = ObsidianVaultObserver(vault_dir=tmp_dir, macro_only=False)
         sim = MockSim()
         
         memory_mgr = HierarchicalMemoryManager()
@@ -58,7 +58,7 @@ def test_obsidian_vault_sync_and_file_structure():
         logs = ["[移动] Agent_Alice 移动到 Town_Square", "[采集] Agent_Bob 采集了 STONE"]
         observer.sync_tick(sim, settlement_logs=logs, memory_manager=memory_mgr)
 
-        # 1. Verify Directories
+        # 1. Verify Directories in detailed mode
         for sub in ["Agents", "Rooms", "Items", "Memories", "Events"]:
             assert os.path.exists(os.path.join(tmp_dir, sub))
 
@@ -93,3 +93,49 @@ def test_obsidian_vault_sync_and_file_structure():
         with open(os.path.join(tmp_dir, "Events", event_files[0]), "r", encoding="utf-8") as f:
             event_content = f.read()
         assert "[[Agents/Agent_Alice]]" in event_content
+
+
+def test_obsidian_vault_macro_only_mode():
+    """Verify macro_only=True generates pure Agents & Rooms without micro node clutter."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        observer = ObsidianVaultObserver(vault_dir=tmp_dir, macro_only=True)
+        sim = MockSim()
+        
+        memory_mgr = HierarchicalMemoryManager()
+        p_alice = PersonaInvariant(
+            agent_id="Agent_Alice",
+            name="Agent_Alice",
+            archetype="Leader",
+            core_conviction="维持秩序",
+            class_index=0.9,
+        )
+        memory_mgr.register_agent(p_alice)
+        memory_mgr.record_event("Agent_Alice", 1, "在广场视察物资。", location="Town_Square")
+
+        logs = ["[移动] Agent_Alice 移动到 Town_Square", "[采集] Agent_Bob 采集了 STONE"]
+        observer.sync_tick(sim, settlement_logs=logs, memory_manager=memory_mgr)
+
+        # 1. Agents and Rooms exist
+        assert os.path.exists(os.path.join(tmp_dir, "Agents"))
+        assert os.path.exists(os.path.join(tmp_dir, "Rooms"))
+
+        # 2. Micro folders are NOT populated with individual markdown nodes
+        for sub in ["Items", "Memories", "Events"]:
+            p = os.path.join(tmp_dir, sub)
+            if os.path.exists(p):
+                assert len([f for f in os.listdir(p) if f.endswith('.md')]) == 0
+
+        # 3. Chronicle timeline exists
+        chronicle_path = os.path.join(tmp_dir, "01_WORLD_CHRONICLE.md")
+        assert os.path.exists(chronicle_path)
+        with open(chronicle_path, "r", encoding="utf-8") as f:
+            chronicle_text = f.read()
+        assert "[[Agents/Agent_Alice]]" in chronicle_text
+
+        # 4. Agent card embeds memory internally without creating external [[Memories/xxx]] link
+        alice_card = os.path.join(tmp_dir, "Agents", "Agent_Alice.md")
+        with open(alice_card, "r", encoding="utf-8") as f:
+            alice_text = f.read()
+        assert "[[Memories/" not in alice_text
+        assert "[[Items/" not in alice_text
+        assert "[[Rooms/" in alice_text

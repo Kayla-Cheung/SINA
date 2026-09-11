@@ -9,23 +9,38 @@
   "colorGroups": [
     {
       "query": "tag:#agent",
-      "color": {"a": 1, "rgb": 3394611}
+      "color": {
+        "a": 1,
+        "rgb": 3394611
+      }
     },
     {
       "query": "tag:#room",
-      "color": {"a": 1, "rgb": 43690}
+      "color": {
+        "a": 1,
+        "rgb": 43690
+      }
     },
     {
       "query": "tag:#memory",
-      "color": {"a": 1, "rgb": 11141375}
+      "color": {
+        "a": 1,
+        "rgb": 11141375
+      }
     },
     {
       "query": "tag:#event",
-      "color": {"a": 1, "rgb": 16737843}
+      "color": {
+        "a": 1,
+        "rgb": 16737843
+      }
     },
     {
       "query": "tag:#item",
-      "color": {"a": 1, "rgb": 16766720}
+      "color": {
+        "a": 1,
+        "rgb": 16766720
+      }
     }
   ],
   "collapse-display": false,
@@ -38,5 +53,6 @@
   "repelStrength": 12,
   "linkStrength": 0.8,
   "linkDistance": 80,
-  "scale": 1
+  "scale": 0.7132754626224402,
+  "close": true
 }

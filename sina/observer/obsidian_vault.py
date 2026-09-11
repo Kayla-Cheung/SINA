@@ -14,12 +14,16 @@ from datetime import datetime
 class ObsidianVaultObserver:
     """
     Observer that renders the live simulation state into an Obsidian-compatible vault.
-    Enables instant force-directed graph view, local graph inspection (social light-cones),
-    and canvas visual mapping without any custom frontend web code.
+    Supports both:
+      - `macro_only=True` (Sociological Swarm Mode): Prunes memory/item/event nodes into
+        internal card tables, leaving the Global Graph 100% clean with only Agents & Rooms.
+      - `macro_only=False` (Fine-Grained Debug Mode): Generates discrete nodes for every memory,
+        event, and item entity.
     """
 
-    def __init__(self, vault_dir: str, max_recent_events: int = 50):
+    def __init__(self, vault_dir: str, macro_only: bool = True, max_recent_events: int = 50):
         self.vault_dir = os.path.abspath(vault_dir)
+        self.macro_only = macro_only
         self.max_recent_events = max_recent_events
         self.agents_dir = os.path.join(self.vault_dir, "Agents")
         self.rooms_dir = os.path.join(self.vault_dir, "Rooms")
@@ -30,9 +34,23 @@ class ObsidianVaultObserver:
         self._ensure_directories()
 
     def _ensure_directories(self) -> None:
-        """Create standard folder layout inside the vault."""
-        for d in [self.agents_dir, self.rooms_dir, self.items_dir, self.memories_dir, self.events_dir]:
+        """Create standard folder layout inside the vault and purge micro files if macro_only."""
+        for d in [self.agents_dir, self.rooms_dir]:
             os.makedirs(d, exist_ok=True)
+
+        if not self.macro_only:
+            for d in [self.items_dir, self.memories_dir, self.events_dir]:
+                os.makedirs(d, exist_ok=True)
+        else:
+            # Clean up micro-node directories so they do not pollute the macro graph
+            for d in [self.items_dir, self.memories_dir, self.events_dir]:
+                if os.path.exists(d):
+                    for fname in os.listdir(d):
+                        if fname.endswith(".md"):
+                            try:
+                                os.remove(os.path.join(d, fname))
+                            except Exception:
+                                pass
 
     def sync_tick(
         self,
@@ -67,7 +85,10 @@ class ObsidianVaultObserver:
             agents_block = "\n".join(agent_links) if agent_links else "- *(空无一人)*"
 
             # Inventory in this room
-            items_list = [f"- [[Items/{k}]] × {v}" for k, v in node.inventory.items() if v > 0]
+            if self.macro_only:
+                items_list = [f"- **{k}** × {v}" for k, v in node.inventory.items() if v > 0]
+            else:
+                items_list = [f"- [[Items/{k}]] × {v}" for k, v in node.inventory.items() if v > 0]
             items_block = "\n".join(items_list) if items_list else "- *(无遗留物资)*"
 
             # Connected sibling/parent/child leaf rooms
@@ -117,7 +138,10 @@ class ObsidianVaultObserver:
             room_name = loc_node.name if loc_node else "Unknown"
 
             # Inventory links
-            inv_links = [f"- [[Items/{k}]] × {v}" for k, v in agent.inventory.items() if v > 0]
+            if self.macro_only:
+                inv_links = [f"- **{k}** × {v}" for k, v in agent.inventory.items() if v > 0]
+            else:
+                inv_links = [f"- [[Items/{k}]] × {v}" for k, v in agent.inventory.items() if v > 0]
             inv_block = "\n".join(inv_links) if inv_links else "- *(空手)*"
 
             # Social nearby links
@@ -129,15 +153,21 @@ class ObsidianVaultObserver:
             if memory_manager and hasattr(memory_manager, "vector_store"):
                 agent_memories = memory_manager.vector_store.get_agent_memories(name)
                 for mem in agent_memories[-5:]:  # show recent 5 memories
-                    mem_file_name = f"Mem_{name}_{mem.tick_start}_{mem.tick_end}"
-                    self._write_single_memory(mem, mem_file_name)
-                    confab_tag = " ⚠️(脑补)" if mem.is_confabulated else ""
-                    memory_links.append(f"- [[Memories/{mem_file_name}]]{confab_tag}: {mem.summary[:40]}...")
+                    if not self.macro_only:
+                        mem_file_name = f"Mem_{name}_{mem.tick_start}_{mem.tick_end}"
+                        self._write_single_memory(mem, mem_file_name)
+                        confab_tag = " ⚠️(脑补)" if mem.is_confabulated else ""
+                        memory_links.append(f"- [[Memories/{mem_file_name}]]{confab_tag}: {mem.summary[:40]}...")
+                    else:
+                        confab_tag = " ⚠️(虚假脑补)" if mem.is_confabulated else ""
+                        memory_links.append(
+                            f"- 🧠 **[T{mem.tick_start}-T{mem.tick_end} @ {mem.location}]**{confab_tag} {mem.summary} *(重要度: {mem.importance:.1f}/10)*"
+                        )
 
             # Fallback to internal memory stream if manager not provided
             if not memory_links and agent.memory_stream:
                 for idx, m in enumerate(agent.memory_stream[-5:]):
-                    memory_links.append(f"- `[{m.get('time', '')}]` {m.get('text', '')[:40]}...")
+                    memory_links.append(f"- `[{m.get('time', '')}]` {m.get('text', '')[:60]}")
 
             memory_block = "\n".join(memory_links) if memory_links else "- *(暂无长期记忆)*"
 
@@ -206,7 +236,10 @@ class ObsidianVaultObserver:
             f.write(content)
 
     def _sync_items(self, sim: Any) -> None:
-        """Render items with descriptions and physics properties."""
+        """Render items with descriptions and physics properties (skipped in macro_only mode)."""
+        if self.macro_only:
+            return
+
         all_item_tags = set()
         for node in sim.environment.all_nodes():
             all_item_tags.update(node.inventory.keys())
@@ -238,12 +271,9 @@ class ObsidianVaultObserver:
                 f.write(content)
 
     def _sync_events(self, tick: int, logs: List[str], sim: Any) -> None:
-        """Log key settlement events into Events folder."""
+        """Log key settlement events into Events folder and continuous chronicle."""
         if not logs:
             return
-
-        file_name = f"Tick_{tick:04d}_Settlement.md"
-        file_path = os.path.join(self.events_dir, file_name)
 
         # Scan logs for agent links and room links
         formatted_lines = []
@@ -257,22 +287,47 @@ class ObsidianVaultObserver:
                     processed_line = processed_line.replace(node.name, f"[[Rooms/{node.name}]]")
             formatted_lines.append(f"- {processed_line.strip()}")
 
-        content = (
-            f"---\n"
-            f"type: event\n"
-            f"tick: {tick}\n"
-            f"time: \"{sim.clock.strftime('%Y-%m-%d %H:%M')}\"\n"
-            f"tags: [event, tick_log]\n"
-            f"---\n\n"
-            f"# ⚡ 历史事件：Tick {tick:04d}\n\n"
-            f"- **时间戳**：`{sim.clock.strftime('%Y-%m-%d %H:%M')}`\n\n"
-            f"## 📜 物理与社会结算流水\n"
-            + "\n".join(formatted_lines)
-            + "\n"
-        )
+        # 1. In detailed mode, create separate Event notes
+        if not self.macro_only:
+            file_name = f"Tick_{tick:04d}_Settlement.md"
+            file_path = os.path.join(self.events_dir, file_name)
+            content = (
+                f"---\n"
+                f"type: event\n"
+                f"tick: {tick}\n"
+                f"time: \"{sim.clock.strftime('%Y-%m-%d %H:%M')}\"\n"
+                f"tags: [event, tick_log]\n"
+                f"---\n\n"
+                f"# ⚡ 历史事件：Tick {tick:04d}\n\n"
+                f"- **时间戳**：`{sim.clock.strftime('%Y-%m-%d %H:%M')}`\n\n"
+                f"## 📜 物理与社会结算流水\n"
+                + "\n".join(formatted_lines)
+                + "\n"
+            )
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(content)
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(content)
+        # 2. Always maintain a continuous live chronicle stream: 01_WORLD_CHRONICLE.md
+        chronicle_path = os.path.join(self.vault_dir, "01_WORLD_CHRONICLE.md")
+        chronicle_entry = (
+            f"### ⏱️ Tick {tick:04d} [{sim.clock.strftime('%Y-%m-%d %H:%M')}]\n"
+            + "\n".join(formatted_lines)
+            + "\n\n---\n\n"
+        )
+        if not os.path.exists(chronicle_path):
+            header = (
+                f"---\n"
+                f"type: chronicle\n"
+                f"tags: [chronicle, live_stream]\n"
+                f"---\n\n"
+                f"# 📜 SINA 世界编年史流水线 (Live World Chronicle)\n\n"
+                f"> 此文件由仿真引擎实时追加，按时间轴追踪全员行为与历史大事件。\n\n---\n\n"
+            )
+            with open(chronicle_path, "w", encoding="utf-8") as f:
+                f.write(header + chronicle_entry)
+        else:
+            with open(chronicle_path, "a", encoding="utf-8") as f:
+                f.write(chronicle_entry)
 
     def _sync_dashboard(self, sim: Any, memory_manager: Optional[Any]) -> None:
         """Create or overwrite the root 00_WORLD_DASHBOARD.md file."""

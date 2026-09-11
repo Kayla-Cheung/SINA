@@ -306,14 +306,15 @@ async def main():
     print("✅ 初始世界节点已写入 Vault。开始交互式推演循环...\n")
 
     auto_run_count = 0
+    step_interval = 0.8
     while True:
         if auto_run_count > 0:
             cmd = ""
             auto_run_count -= 1
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(step_interval)
         else:
             try:
-                cmd = input(f"[Tick {world.tick_count:02d} | 敲回车推演 1 步 / 输入 'run <N>' 自动推演 / 'inject <事件>' 突发事件 / 'q' 退出] > ").strip()
+                cmd = input(f"[Tick {world.tick_count:02d} | 回车推演 1 步 / 'play <N> [秒数]' 自动平滑播放 / 'inject <事件>' / 'q' 退出] > ").strip()
             except (EOFError, KeyboardInterrupt):
                 break
 
@@ -321,11 +322,20 @@ async def main():
             break
 
         custom_event = None
-        if cmd.startswith("run "):
+        if cmd.startswith("play ") or cmd.startswith("run "):
+            parts = cmd.split()
             try:
-                auto_run_count = max(0, int(cmd.split()[1]) - 1)
+                auto_run_count = max(0, int(parts[1]) - 1)
             except Exception:
-                auto_run_count = 5
+                auto_run_count = 10
+            try:
+                if len(parts) >= 3:
+                    step_interval = float(parts[2])
+                else:
+                    step_interval = 0.8
+            except Exception:
+                step_interval = 0.8
+            print(f"▶️ [自动推演中] 将连续推演 {auto_run_count + 1} 步，每步间隔 {step_interval:.1f}s...")
         elif cmd.startswith("inject "):
             custom_event = cmd[7:].strip()
             print(f"⚡ [上帝干预] 注入突发事件: {custom_event}")
@@ -339,7 +349,7 @@ async def main():
         print(f"\n⏱ Tick {world.tick_count:02d} [{world.clock.strftime('%H:%M')}] | 👥 存活: {alive} | 昏迷: {comatose} | 死亡: {dead}")
         for log_line in logs[:5]:
             print(f"  {log_line}")
-        print("  ✓ [Obsidian Vault] Markdown 双链与星图拓扑已同步刷新！\n")
+        print("  ✓ [Obsidian Vault] 双链、星图与编年史已实时刷新！\n")
 
 
 if __name__ == "__main__":

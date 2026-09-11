@@ -11,7 +11,7 @@ tags: [room, place, spatial_node]
 - [[Agents/Alpha_Leader]]
 
 ## 📦 空间物资 (Inventory)
-- [[Items/SHARP_STONE]] × 5
+- **SHARP_STONE** × 5
 
 ## 🚪 连通区域 (Connected Portals)
 - [[Rooms/Open_Plains]]
