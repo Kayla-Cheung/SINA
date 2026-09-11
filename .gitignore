@@ -29,3 +29,18 @@ frontend/dist/
 worlds/
 *backup.json
 
+# Internal Roadmaps, Docs, Research Drafts & Scratch
+ROADMAP.md
+docs/
+scratch/
+issues/
+issue_*.md
+patch_*.py
+debug*.py
+temp_*.py
+test_dag.py
+refactor_dag.py
+*.cjs
+
+
+
