@@ -1,9 +1,9 @@
 {
   "nodes": [
     {
-      "id": "room_Open_Plains",
+      "id": "room_Cafe",
       "type": "file",
-      "file": "Rooms/Open_Plains.md",
+      "file": "Rooms/Cafe.md",
       "x": 0,
       "y": 0,
       "width": 320,
@@ -11,9 +11,9 @@
       "color": "4"
     },
     {
-      "id": "room_Dark_Cave",
+      "id": "room_Library",
       "type": "file",
-      "file": "Rooms/Dark_Cave.md",
+      "file": "Rooms/Library.md",
       "x": 400,
       "y": 0,
       "width": 320,
@@ -21,9 +21,9 @@
       "color": "4"
     },
     {
-      "id": "room_Dense_Forest",
+      "id": "room_Park",
       "type": "file",
-      "file": "Rooms/Dense_Forest.md",
+      "file": "Rooms/Park.md",
       "x": 800,
       "y": 0,
       "width": 320,
@@ -31,9 +31,9 @@
       "color": "4"
     },
     {
-      "id": "room_Riverbank",
+      "id": "room_Supermarket",
       "type": "file",
-      "file": "Rooms/Riverbank.md",
+      "file": "Rooms/Supermarket.md",
       "x": 0,
       "y": 320,
       "width": 320,
@@ -41,10 +41,20 @@
       "color": "4"
     },
     {
-      "id": "room_Hilltop",
+      "id": "room_Hospital",
       "type": "file",
-      "file": "Rooms/Hilltop.md",
+      "file": "Rooms/Hospital.md",
       "x": 400,
+      "y": 320,
+      "width": 320,
+      "height": 240,
+      "color": "4"
+    },
+    {
+      "id": "room_School",
+      "type": "file",
+      "file": "Rooms/School.md",
+      "x": 800,
       "y": 320,
       "width": 320,
       "height": 240,
@@ -54,33 +64,41 @@
   "edges": [
     {
       "id": "edge_0",
-      "fromNode": "room_Open_Plains",
+      "fromNode": "room_Cafe",
       "fromSide": "right",
-      "toNode": "room_Dark_Cave",
+      "toNode": "room_Library",
       "toSide": "left",
       "label": "Portal"
     },
     {
       "id": "edge_1",
-      "fromNode": "room_Dark_Cave",
+      "fromNode": "room_Library",
       "fromSide": "right",
-      "toNode": "room_Dense_Forest",
+      "toNode": "room_Park",
       "toSide": "left",
       "label": "Portal"
     },
     {
       "id": "edge_2",
-      "fromNode": "room_Dense_Forest",
+      "fromNode": "room_Park",
       "fromSide": "right",
-      "toNode": "room_Riverbank",
+      "toNode": "room_Supermarket",
       "toSide": "left",
       "label": "Portal"
     },
     {
       "id": "edge_3",
-      "fromNode": "room_Riverbank",
+      "fromNode": "room_Supermarket",
       "fromSide": "right",
-      "toNode": "room_Hilltop",
+      "toNode": "room_Hospital",
+      "toSide": "left",
+      "label": "Portal"
+    },
+    {
+      "id": "edge_4",
+      "fromNode": "room_Hospital",
+      "fromSide": "right",
+      "toNode": "room_School",
       "toSide": "left",
       "label": "Portal"
     }

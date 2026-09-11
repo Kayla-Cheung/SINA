@@ -1,21 +1,21 @@
 ---
 type: room
-room_name: Riverbank
+room_name: Hospital
 occupant_count: 0
 tags: [room, place, spatial_node]
 ---
 
-# 🏛️ 空间节点：Riverbank
+# 🏛️ 空间节点：Hospital
 
 ## 👥 在场智能体 (Occupants)
 - *(空无一人)*
 
 ## 📦 空间物资 (Inventory)
-- **SHARP_STONE** × 10
-- **WATER** × 99
+- **MEDICINE** × 20
 
 ## 🚪 连通区域 (Connected Portals)
-- [[Rooms/Open_Plains]]
-- [[Rooms/Dark_Cave]]
-- [[Rooms/Dense_Forest]]
-- [[Rooms/Hilltop]]
+- [[Rooms/Cafe]]
+- [[Rooms/Library]]
+- [[Rooms/Park]]
+- [[Rooms/Supermarket]]
+- [[Rooms/School]]

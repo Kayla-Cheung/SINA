@@ -76,6 +76,15 @@ class ObsidianVaultObserver:
         all_nodes = sim.environment.all_nodes()
         all_node_names = {node.name for node in all_nodes}
 
+        # Clean up stale room notes from previous world runs
+        current_room_files = {f"{node.name}.md" for node in all_nodes}
+        for existing in os.listdir(self.rooms_dir):
+            if existing.endswith(".md") and existing not in current_room_files:
+                try:
+                    os.remove(os.path.join(self.rooms_dir, existing))
+                except Exception:
+                    pass
+
         for node in all_nodes:
             file_path = os.path.join(self.rooms_dir, f"{node.name}.md")
             
@@ -132,6 +141,15 @@ class ObsidianVaultObserver:
 
     def _sync_agents(self, sim: Any, memory_manager: Optional[Any]) -> None:
         """Render each agent with links to current room, inventory, allies, and memory nodes."""
+        # Clean up stale agent notes from previous world runs
+        current_agent_files = {f"{name}.md" for name in sim.world_agents.keys()}
+        for existing in os.listdir(self.agents_dir):
+            if existing.endswith(".md") and existing not in current_agent_files:
+                try:
+                    os.remove(os.path.join(self.agents_dir, existing))
+                except Exception:
+                    pass
+
         for name, agent in sim.world_agents.items():
             file_path = os.path.join(self.agents_dir, f"{name}.md")
             loc_node = sim.environment.agent_locations.get(name)

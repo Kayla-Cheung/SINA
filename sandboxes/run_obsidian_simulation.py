@@ -25,7 +25,7 @@ from sina.observer.obsidian_vault import ObsidianVaultObserver
 class StandaloneWorld:
     """A clean, standalone multi-agent simulation world for interactive experimentation."""
 
-    def __init__(self, vault_path: str, world_name: str = "stone_age"):
+    def __init__(self, vault_path: str, world_name: str = "smallville"):
         self.clock = datetime(2026, 1, 1, 8, 0)
         self.tick_count = 0
         self.active_proposal = [None]
@@ -38,72 +38,83 @@ class StandaloneWorld:
         self.physics = PhysicsEngine(world_name=world_name)
 
         # 3. Hierarchical Memory Subsystem
-        self.memory_manager = HierarchicalMemoryManager(default_token_threshold=120)
+        self.memory_manager = HierarchicalMemoryManager(default_token_threshold=150)
 
-        # 4. Observer: Obsidian Vault Syncer
-        self.observer = ObsidianVaultObserver(vault_dir=vault_path)
+        # 4. Observer: Obsidian Vault Syncer (Pure Macro Sociological Swarm)
+        self.observer = ObsidianVaultObserver(vault_dir=vault_path, macro_only=True)
 
         # 5. Initialize Agents
         self.world_agents: dict[str, AgentState] = {}
         self._init_society()
 
     def _init_society(self):
-        """Create a diverse 5-agent archetypal society."""
+        """Create a diverse 6-agent modern town society (Smallville)."""
         agents_data = [
             {
-                "name": "Alpha_Leader",
-                "archetype": "Dominant_Authority",
-                "traits": "专断、重视部族秩序、掌控资源分配",
-                "conviction": "维持统治威权与族群生存底线",
-                "class_index": 0.95,
-                "wealth": 3000.0,
-                "start_room": "Hilltop",
-                "inventory": {"TORCH": 2, "SPEAR": 1, "MEAT": 3},
+                "name": "Isabella",
+                "archetype": "Merchant_Host",
+                "traits": "热情、专注、经营一家温馨的街角咖啡馆",
+                "conviction": "营造温暖社区空间，维持咖啡馆生计与人际联结",
+                "class_index": 0.75,
+                "wealth": 2800.0,
+                "start_room": "Cafe",
+                "inventory": {"COFFEE": 5, "PASTRY": 3, "MONEY": 80},
                 "hunger": 25,
             },
             {
-                "name": "Beta_Hunter",
-                "archetype": "Pragmatic_Worker",
-                "traits": "务实、擅长狩猎与采集、体魄强健",
-                "conviction": "凭借劳动换取食物与安全",
-                "class_index": 0.60,
+                "name": "Tom",
+                "archetype": "Creative_Writer",
+                "traits": "内向、喜欢安静、自由小说撰稿人",
+                "conviction": "追求文学纯粹性与精神宁静，记录小镇日常",
+                "class_index": 0.55,
                 "wealth": 1500.0,
-                "start_room": "Dense_Forest",
-                "inventory": {"STONE": 3, "MEAT": 4},
+                "start_room": "Library",
+                "inventory": {"BOOK": 2, "MONEY": 50},
                 "hunger": 20,
             },
             {
-                "name": "Gamma_Scholar",
-                "archetype": "Analytical_Seeker",
-                "traits": "理性、敏锐、探寻物理规律与制作配方",
-                "conviction": "探索未知，打破愚昧迷信",
-                "class_index": 0.75,
-                "wealth": 2000.0,
-                "start_room": "Dark_Cave",
-                "inventory": {"TORCH": 1, "WOOD": 2},
+                "name": "Klaus",
+                "archetype": "Ambitious_Student",
+                "traits": "充满活力、求知欲强、在校备考大学生",
+                "conviction": "通过学术考试提升社会阶层与探索前沿知识",
+                "class_index": 0.45,
+                "wealth": 900.0,
+                "start_room": "Park",
+                "inventory": {"BOOK": 1, "APPLE": 2, "MONEY": 20},
+                "hunger": 22,
+            },
+            {
+                "name": "Maria",
+                "archetype": "Naturalist_Educator",
+                "traits": "细心、热爱自然与教育、植物学家与公立学校教师",
+                "conviction": "守护小镇生态多样性与培育下一代科学素养",
+                "class_index": 0.70,
+                "wealth": 2200.0,
+                "start_room": "School",
+                "inventory": {"BREAD": 2, "WATER": 3},
+                "hunger": 24,
+            },
+            {
+                "name": "Sam",
+                "archetype": "Pragmatic_Engineer",
+                "traits": "务实、动手能力强、小镇综合维护工程师",
+                "conviction": "保障小镇公共基础设施运转与邻里互助协作",
+                "class_index": 0.60,
+                "wealth": 1800.0,
+                "start_room": "Supermarket",
+                "inventory": {"WATER": 2, "MONEY": 40},
+                "hunger": 20,
+            },
+            {
+                "name": "Ryan",
+                "archetype": "Cyber_Nomad",
+                "traits": "焦虑、工作狂、远程软件工程师",
+                "conviction": "通过技术效率掌控财富，寻求数字游民的自由",
+                "class_index": 0.85,
+                "wealth": 3800.0,
+                "start_room": "Cafe",
+                "inventory": {"COFFEE": 2, "MONEY": 120},
                 "hunger": 18,
-            },
-            {
-                "name": "Delta_Survivor",
-                "archetype": "Subordinate_Survivor",
-                "traits": "胆小、饥饿、在阶层夹缝中依附求生",
-                "conviction": "不择手段活过即将到来的凛冬",
-                "class_index": 0.15,
-                "wealth": 300.0,
-                "start_room": "Open_Plains",
-                "inventory": {"BERRY": 1},
-                "hunger": 8,
-            },
-            {
-                "name": "Epsilon_Rebel",
-                "archetype": "Nihilist_Rebel",
-                "traits": "反叛、怀疑权威、伺机抢夺资源打破阶层",
-                "conviction": "摧毁旧有秩序，夺取生存自主权",
-                "class_index": 0.35,
-                "wealth": 600.0,
-                "start_room": "Dense_Forest",
-                "inventory": {"STONE": 2},
-                "hunger": 12,
             },
         ]
 
@@ -112,7 +123,7 @@ class StandaloneWorld:
             agent = AgentState(
                 name=name,
                 traits=data["traits"],
-                intentions=["搜集食物", "探索周边", "建立同盟"],
+                intentions=["经营生活", "探索小镇", "建立社区联结"],
                 start_time=self.clock,
             )
             agent.hunger = data["hunger"]
@@ -139,19 +150,25 @@ class StandaloneWorld:
         """Execute 1 discrete tick of simulation."""
         self.tick_count += 1
         self.clock += timedelta(minutes=15)
-        is_night = not (6 <= self.clock.hour < 18)
+        is_night = not (6 <= self.clock.hour < 21)
         
-        # 1. Environment Phase: Spoilage & Seasonal respawn
+        # 1. Environment Phase: Spoilage & Town Resource Replenishment
         for node in self.environment.all_nodes():
             self.physics.resolve_spoilage(node.inventory)
         for agent in self.world_agents.values():
             if not agent.is_dead:
                 self.physics.resolve_spoilage(agent.inventory)
 
-        # Resource respawn in forest/plains
-        df = self.environment.get_node_by_name("Dense_Forest")
-        if df:
-            df.inventory["BERRY"] = df.inventory.get("BERRY", 0) + 2
+        # Commercial inventory replenishment (Cafe & Supermarket)
+        cafe_node = self.environment.get_node_by_name("Cafe")
+        if cafe_node:
+            cafe_node.inventory["COFFEE"] = cafe_node.inventory.get("COFFEE", 0) + 1
+            cafe_node.inventory["PASTRY"] = cafe_node.inventory.get("PASTRY", 0) + 1
+
+        market_node = self.environment.get_node_by_name("Supermarket")
+        if market_node:
+            market_node.inventory["BREAD"] = market_node.inventory.get("BREAD", 0) + 1
+            market_node.inventory["APPLE"] = market_node.inventory.get("APPLE", 0) + 1
 
         # 2. Agent Decision & Synthetic Intent Phase
         intents = []
@@ -178,11 +195,11 @@ class StandaloneWorld:
 
             # Record observation into Hierarchical Memory
             loc_node = self.environment.agent_locations.get(name)
-            room_name = loc_node.name if loc_node else "Town_Square"
+            room_name = loc_node.name if loc_node else "Cafe"
             
-            obs_text = f"在 {room_name} 感到身体饥饿度为 {agent.hunger}/30。"
-            if custom_event and name in ("Alpha_Leader", "Epsilon_Rebel"):
-                obs_text += f" 【突发事件】{custom_event}"
+            obs_text = f"在小镇 {room_name} 感到身体精力为 {agent.hunger}/30。"
+            if custom_event and name in ("Isabella", "Tom", "Ryan"):
+                obs_text += f" 【小镇热点】{custom_event}"
 
             self.memory_manager.record_event(
                 agent_id=name,
@@ -192,9 +209,9 @@ class StandaloneWorld:
                 location=room_name,
             )
 
-            # Heuristic simulation intention for offline demo
+            # Heuristic simulation intention for modern town
             action_dict = self._simulate_heuristic_intent(name, agent, loc_node)
-            agent.current_action = action_dict.get("observable_action", "观察周围")
+            agent.current_action = action_dict.get("observable_action", "在小镇漫步")
             intents.append(ActionIntent(agent_name=name, raw_action=action_dict, source_room=room_name))
 
         # 3. Settle Phase
@@ -220,50 +237,54 @@ class StandaloneWorld:
         return logs
 
     def _simulate_heuristic_intent(self, name: str, agent: AgentState, current_room: EnvNode) -> dict:
-        """Heuristic decision logic for offline demo simulation."""
-        # If very hungry and has food, eat
-        if agent.hunger < 15:
-            for food in ["COOKED_MEAT", "MEAT", "BERRY"]:
+        """Heuristic decision logic for modern Smallville town simulation."""
+        # 1. If hungry (< 18) and has modern food/beverage, consume
+        if agent.hunger < 18:
+            for food in ["PASTRY", "BREAD", "APPLE", "COFFEE"]:
                 if agent.inventory.get(food, 0) > 0:
                     return {
-                        "internal_thought": f"好饿，必须立刻吃下 {food} 维持生命！",
-                        "observable_action": f"正在狼吞虎咽地吃 {food}",
+                        "internal_thought": f"有点饿了，先享用一份 {food} 补充能量。",
+                        "observable_action": f"正在品尝美味的 {food}",
                         "eat_item": food,
                     }
 
-        # If in room with berries, pick up
-        if current_room.inventory.get("BERRY", 0) > 0:
+        # 2. If in Cafe with pastries/coffee, take/buy
+        if current_room and current_room.name == "Cafe":
+            for item in ["COFFEE", "PASTRY"]:
+                if current_room.inventory.get(item, 0) > 0 and agent.inventory.get(item, 0) == 0:
+                    return {
+                        "internal_thought": f"闻到咖啡馆的香气，购买一份 {item}。",
+                        "observable_action": f"在咖啡馆点了一份新鲜的 {item}",
+                        "take_item_tag": item,
+                    }
+
+        # 3. If in Supermarket, purchase bread or apples
+        if current_room and current_room.name == "Supermarket":
+            for item in ["BREAD", "APPLE"]:
+                if current_room.inventory.get(item, 0) > 0 and agent.inventory.get(item, 0) == 0:
+                    return {
+                        "internal_thought": f"在超市货架前选购日常食品 {item}。",
+                        "observable_action": f"从货架取下 {item} 并完成结账",
+                        "take_item_tag": item,
+                    }
+
+        # 4. Isabella initiates community proposal at tick 3
+        if name == "Isabella" and self.tick_count == 3 and self.active_proposal[0] is None:
             return {
-                "internal_thought": f"看到地上有浆果，采集备用。",
-                "observable_action": "弯腰采集地上的新鲜浆果",
-                "take_item_tag": "BERRY",
+                "internal_thought": "为了活跃小镇氛围，提议在小镇公园举办周末春季文化沙龙与农夫市集。",
+                "observable_action": "向居民委员会提交了「举办小镇春季市集与读书沙龙」的社区提案",
+                "propose_blueprint": "在小镇公园举办春季社区市集与文化读书沙龙",
             }
 
-        # Rebel tries to attack leader if in same room
-        if name == "Epsilon_Rebel" and "Alpha_Leader" in current_room.agents:
-            return {
-                "internal_thought": "这是推翻权威的最佳时机，抢走首领的火把与熟肉！",
-                "observable_action": "突然拔出石刀扑向 Alpha_Leader 发动突袭！",
-                "attack_target": "Alpha_Leader",
-            }
-
-        # Leader proposes blueprint at tick 3
-        if name == "Alpha_Leader" and self.tick_count == 3 and self.active_proposal[0] is None:
-            return {
-                "internal_thought": "必须建立篝火防御夜间野兽，召集全员公决。",
-                "observable_action": "高举火把向众人提议建立中央篝火制度",
-                "propose_blueprint": "在广场建立永不熄灭的部落中央篝火",
-            }
-
-        # Vote YES if proposal is active
+        # 5. Vote YES if town proposal is active
         if self.active_proposal[0] is not None and name not in self.active_proposal[0].votes:
             return {
-                "internal_thought": "同意这项防御提议，有利于大家活命。",
-                "observable_action": "举手赞同首领的篝火提案",
+                "internal_thought": "这是个很棒的社区活动提议，投赞成票支持！",
+                "observable_action": "举手赞同 Isabella 的春季市集提案",
                 "vote_on_blueprint": "YES",
             }
 
-        # Roam to adjacent room
+        # 6. Roam across modern town portals
         candidates = []
         if current_room:
             if current_room.parent:
@@ -276,14 +297,14 @@ class StandaloneWorld:
         if candidates:
             next_room = candidates[self.tick_count % len(candidates)]
             return {
-                "internal_thought": f"巡视周边，前往 {next_room} 搜寻物资。",
-                "observable_action": f"动身前往 {next_room}",
+                "internal_thought": f"处理完手头事务，动身前往 {next_room}。",
+                "observable_action": f"漫步前往小镇 {next_room}",
                 "move_to": next_room,
             }
 
         return {
-            "internal_thought": "静观其变，保存体能。",
-            "observable_action": "在原地闭目休憩",
+            "internal_thought": "坐在长椅上静静享受小镇的静谧时光。",
+            "observable_action": "在原地休憩沉思",
         }
 
 
