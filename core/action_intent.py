@@ -30,6 +30,8 @@ class ActionSchema(BaseModel):
     take_item_tag: Optional[str] = Field(default=None, description="拾取的物品标签")
     drop_item_tag: Optional[str] = Field(default=None, description="丢弃的物品标签")
     produce_item_tag: Optional[str] = Field(default=None, description="直接产出的物品标签")
+    search_memory: Optional[str] = Field(default=None, description="主动检索记忆的查询语句")
+    discard_memory_thought: Optional[str] = Field(default=None, description="主动丢弃重复或无用念头")
 
 class ActionIntent:
     """
@@ -114,6 +116,14 @@ class ActionIntent:
     @property
     def produce_item_tag(self) -> str | None:
         return self.raw_action.get("produce_item_tag")
+        
+    @property
+    def search_memory(self) -> str | None:
+        return self.raw_action.get("search_memory")
+
+    @property
+    def discard_memory_thought(self) -> str | None:
+        return self.raw_action.get("discard_memory_thought")
 
     def __repr__(self) -> str:
         action_type = "other"

@@ -145,16 +145,24 @@ class EnvTickNode(DAGNode):
             for item in spoiled:
                 print(f"    🦠 [{node.name}] {item} 腐烂了")
                 
+        # 玩家背包防腐漏洞修复
+        for name, agent in sim.world_agents.items():
+            if not agent.is_dead:
+                spoiled_agent = sim.physics.resolve_spoilage(agent.inventory)
+                for item in spoiled_agent:
+                    print(f"    🦠 [{name} 的背包] {item} 腐烂了")
+                    agent.pending_events.append(f"【物品损坏】你背包里的 {item} 腐烂了。")
+                
         # 季节影响资源再生
-        season_idx = (sim.tick_count // 24) % 3
-        season_names = ["春季", "秋季", "凛冬"]
+        season_idx = (sim.tick_count // 24) % 4
+        season_names = ["春季", "夏季", "秋季", "凛冬"]
         current_season = season_names[season_idx]
         
         spawn_amount = 0
-        if current_season == "春季":
-            if sim.tick_count % 2 == 0: spawn_amount = 3
+        if current_season == "春季" or current_season == "夏季":
+            spawn_amount = 4  # 每帧 4 个，满足 1.5 倍消耗量
         elif current_season == "秋季":
-            if sim.tick_count % 4 == 0: spawn_amount = 1
+            spawn_amount = 1  # 资源衰退
         elif current_season == "凛冬":
             spawn_amount = 0
             
@@ -163,7 +171,15 @@ class EnvTickNode(DAGNode):
             op = sim.environment.get_node_by_name("Open_Plains")
             if df: df.inventory["BERRY"] = df.inventory.get("BERRY", 0) + spawn_amount
             if op: op.inventory["BERRY"] = op.inventory.get("BERRY", 0) + spawn_amount
-            print(f"    🌿 [{current_season}] 自然界生长了 {spawn_amount} 个浆果")
+            print(f"    🌱 [{current_season}] 自然界生长了 {spawn_amount} 个浆果")
+            
+            # 【夏季上帝广播】入夏第一帧触发
+            if current_season == "夏季" and sim.tick_count % 24 == 0:
+                for name, agent in sim.world_agents.items():
+                    if not agent.is_dead and not agent.is_comatose:
+                        agent.pending_events.append("【天空的神谕】温暖的夏季已至，但万物凋零的『凛冬』即将到来！那是一个长达数小时没有任何食物生长的死亡季节。请务必立刻前往森林和平原疯狂采集浆果，并将其存入背包。不要再漫无目的地发呆了，囤粮是你们活下去的唯一希望！")
+                print("    ☁️ [天空神谕] 已向所有存活者下达冬季囤粮警告！")
+                
         elif current_season == "凛冬":
             if sim.tick_count % 4 == 0:
                 print(f"    ❄️ [{current_season}] 冰雪覆盖，没有任何食物生长。")
@@ -182,6 +198,13 @@ class AgentThinkNode(DAGNode):
                 if not agent.is_dead:
                     print(f"    💀 {name} 因极度饥饿（饥饿度 {agent.hunger}/30）悲惨地死去了...")
                     agent.is_dead = True
+                    # 死亡掉落机制
+                    loc_node = sim.environment.agent_locations.get(name)
+                    if loc_node and agent.inventory:
+                        print(f"    🎒 {name} 的遗物掉落在了 {loc_node.name}：{agent.inventory}")
+                        for item, count in agent.inventory.items():
+                            loc_node.inventory[item] = loc_node.inventory.get(item, 0) + count
+                        agent.inventory = {}
                 continue
             
             if agent.hunger <= 0 and not agent.is_comatose:
@@ -304,12 +327,12 @@ class OracleJudgeNode(DAGNode):
         sim = state["sim"]
         proposal = sim.active_proposal[0]
         if proposal:
-            alive_names = [n for n, a in sim.world_agents.items() if not a.is_dead]
+            alive_names = [n for n, a in sim.world_agents.items() if not a.is_dead and not a.is_comatose]
             all_voted = all(n in proposal.votes for n in alive_names)
 
             if all_voted:
                 print("\n  📋 Phase 3: 提案裁决 [DAG算子]")
-                yes_count = sum(1 for v in proposal.votes.values() if v == "YES")
+                yes_count = sum(1 for v in proposal.votes.values() if v in ("YES", "approve"))
                 total = len(proposal.votes)
 
                 if yes_count == total:

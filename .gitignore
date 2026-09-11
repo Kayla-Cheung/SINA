@@ -1,18 +1,31 @@
-# Ignore environment variables
-.env
-
-# Ignore private world configurations (Engine-Config Decoupling)
-worlds/hogwarts/
-worlds/*
-!worlds/template/
-!worlds/README.md
-
-# Ignore Python caches
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
 
-# Ignore execution logs and dynamic states
-*.log
-live_simulation.log
-live_simulation_dag.log
-world_state*.json
+# Environments & Secrets
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# Databases & Local Logs
+*.db
+*.sqlite3
+logs/
+.DS_Store
+
+# Frontend & Dependencies
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+
+# Private World Configs & Backups (Engine-Config Decoupling)
+worlds/
+*backup.json
+

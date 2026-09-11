@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import asyncio
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -84,7 +84,23 @@ async def clear_saves():
 
 @app.post("/api/games/{game_id}/step")
 async def step_game(game_id: str):
+    global step_event
+    if 'step_event' in globals():
+        step_event.set()
     return {"success": True}
+
+@app.get("/api/agents/{agent_id}/memories")
+async def get_agent_memories(agent_id: str):
+    global last_state_dump
+    if 'last_state_dump' in globals():
+        for a in last_state_dump.get("agents", []):
+            if a["id"] == agent_id:
+                return {
+                    "agent_id": agent_id,
+                    "short_term": a.get("short_term_memory", []),
+                    "long_term": []
+                }
+    return {"agent_id": agent_id, "short_term": [], "long_term": []}
 
 class ConnectionManager:
     def __init__(self):
@@ -143,12 +159,27 @@ async def simulation_loop():
     }
 
     
-    # 寮哄埗鍦ㄥ悗鍙版棤灏芥帹婕?
-    for tick in range(1, 10000):
-        # REMOVED: active_connections check to ensure simulation always runs
+    # 【手动单步执行模式】
+    global step_event
+    step_event = asyncio.Event()
+    
+    # 无限循环模拟引擎
+    for tick in range(1, 100000):
+        # 阻塞等待前端调用 /step 接口
+        await step_event.wait()
+        step_event.clear()
+        
         await sim.run_dag_loop(1)
         
-        # 缁勮鐗╃悊鐘舵€?JSON锛屾帹閫佸墠绔?
+        # Extinction Event check
+        all_comatose = len(sim.world_agents) > 0 and all(getattr(a, 'is_comatose', False) or getattr(a, 'is_dead', False) for a in sim.world_agents.values())
+        if all_comatose:
+            print("[SINA] Extinction Event detected. Rebooting simulation...")
+            import subprocess
+            subprocess.run(["python", "reset_memory.py"])
+            sim = SmallvilleSimulation("smallville")
+            
+        # Assemble state dump
         agent_locations = {}
         for n in sim.environment.all_nodes():
             for agent_name in n.agents:
@@ -238,4 +269,4 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
         manager.disconnect(websocket)
 
 if __name__ == "__main__":
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False, ws="websockets")

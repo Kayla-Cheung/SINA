@@ -40,16 +40,54 @@ async def store_observation(state: AgentState, text: str, sim_time: datetime):
     # 重要性累积超过阈值 → 触发反思
     if state.importance_accumulator > 15:
         recent_texts = state.memory_stream[-10:]
-        insights = await generate_insights(recent_texts, count=2)
-        for insight in insights:
-            insight_entry = {
-                "time": sim_time.strftime("%H:%M"),
-                "text": f"[深层领悟] {insight}",
-                "importance": 5,
-            }
-            state.memory_stream.append(insight_entry)
-            # 将领悟追加到 traits，影响后续决策人格
-            state.traits += f" [Deep Realization: {insight}]"
+        
+        # 【因果锚定 (Causally Grounded)】
+        # 检查最近的记忆中是否有实质性的物理世界反馈。如果没有，拒绝“空想反思”。
+        has_physical_anchor = any(
+            "[物理现实]" in m["text"] or "[战斗]" in m["text"] or "[疾病]" in m["text"] 
+            for m in recent_texts
+        )
+        
+        if has_physical_anchor:
+            insights = await generate_insights(recent_texts, count=2)
+            
+            # 【遗忘法则】提炼出高级领悟后，立刻销毁作为原材料的底层碎片记忆
+            del state.memory_stream[-10:]
+            
+            import re
+            for insight in insights:
+                insight_entry = {
+                    "time": sim_time.strftime("%H:%M"),
+                    "text": f"[深层领悟] {insight}",
+                    "importance": 5,
+                }
+                state.memory_stream.append(insight_entry)
+                # 将领悟追加到 traits，影响后续决策人格
+                state.traits += f" [Deep Realization: {insight}]"
+                
+            # 【人格浓缩法则 (Semantic Compression)】防止 traits 膨胀，使用 LLM 迭代升华人格
+            base_traits = re.sub(r' \[Deep Realization: .*?\]', '', state.traits)
+            realizations = re.findall(r' \[Deep Realization: .*?\]', state.traits)
+            if len(realizations) > 3:
+                compress_prompt = (
+                    f"Base traits: {base_traits}\n"
+                    f"Recent realizations: {realizations}\n"
+                    "Synthesize the base traits and recent realizations into a single, cohesive, highly condensed character description (under 50 words) that natively incorporates the new realizations. "
+                    "Return ONLY the new character description in Chinese, with no formatting or explanation."
+                )
+                new_traits = await gateway.generate_text(
+                    system_prompt="You are a data compression algorithm for agentic personas.",
+                    user_prompt=compress_prompt,
+                    temperature=0.3
+                )
+                if new_traits:
+                    state.traits = new_traits
+                else:
+                    state.traits = base_traits + "".join(realizations[-3:])
+            else:
+                state.traits = base_traits + "".join(realizations)
+            
+        # 无论是否生成领悟，阈值满后都重置累加器
         state.importance_accumulator = 0
 
 
@@ -95,8 +133,8 @@ async def determine_next_action(
     from datetime import datetime as dt
     start_time = dt(2026, 1, 1, 6, 0)
     ticks = int((current_time - start_time).total_seconds() / 900)
-    season_idx = (ticks // 24) % 3
-    season_names = ["春季(丰饶，遍地浆果)", "秋季(衰退，资源减产)", "凛冬(死亡，严寒且没有任何植物生长)"]
+    season_idx = (ticks // 24) % 4
+    season_names = ["春季(丰饶，遍地浆果)", "夏季(温暖，适宜囤粮)", "秋季(衰退，资源减产)", "凛冬(死亡，严寒且没有任何植物生长)"]
     current_season = season_names[season_idx]
     
     period = "【夜晚—危险！】" if is_night else "【白天】"
@@ -141,6 +179,9 @@ async def determine_next_action(
     # ── 系统提示词 ──
     system_prompt = f"""{identity_rules}
 
+【硬性物理约束：交接物品】
+如果你在语言中承诺给予他人食物或任何物品，绝不能仅凭 chat 敷衍！你必须在 JSON 的 `give_item` 字段中明确填入要给的物品和对方名字，否则会被世界规则判定为诈骗并导致对方饿死！
+  
 现在是 {time_str} {period}
 
 ═══ 硬物理层（不可违反的自然法则）═══
@@ -184,7 +225,9 @@ async def determine_next_action(
   "drop_item_tag": null,
   "produce_item_tag": null,
   "propose_blueprint": null,
-  "vote_on_blueprint": null
+  "vote_on_blueprint": null,
+  "search_memory": null,
+  "discard_memory_thought": null
 }}
 
 字段说明：
@@ -198,7 +241,9 @@ async def determine_next_action(
 - produce_item_tag: 通过劳动凭空生产一件物品（消耗 1 饥饿度），或 null
 - propose_blueprint: 提出一个发明或社会规则的提案（字符串描述），或 null
 - vote_on_blueprint: 对当前活跃提案投票 "YES" 或 "NO"，或 null
-- duration_minutes: 这个行动持续多少分钟（5-30）
+- duration_minutes: 这个行动持续多少分钟（1-30）
+- search_memory: 主动用关键字搜索过去的记忆，如果当前上下文不足以做决策时使用，或 null
+- discard_memory_thought: 主动丢弃当前头脑中无用、重复的执念（字符串），或 null
 """
 
     from action_intent import ActionSchema

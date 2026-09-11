@@ -64,7 +64,7 @@ async def settle_all_intents(
                 loser = combat_res["loser"]
                 loot = combat_res["loot_transferred"]
                 
-                target_agent.hunger = max(0, target_agent.hunger + combat_res["loser_hunger_penalty"])
+                target_agent.hunger = max(0, target_agent.hunger - combat_res["loser_hunger_penalty"])
                 
                 if winner == agent_name:
                     desc = f"你击败了 {target_name}，抢到了 {loot if loot else '空气'}。"
@@ -72,7 +72,7 @@ async def settle_all_intents(
                 else:
                     desc = f"你试图攻击 {target_name} 却被反杀，失去了 {loot if loot else '尊严'}，受了重伤（饥饿大降）！"
                     t_desc = f"【遭到攻击】{agent_name} 试图攻击你，但被你击退并抢走了 {loot if loot else '空气'}。"
-                    agent.hunger = max(0, agent.hunger + combat_res["loser_hunger_penalty"])
+                    agent.hunger = max(0, agent.hunger - combat_res["loser_hunger_penalty"])
 
                 feedback_events.append(f"[物理现实] {desc}")
                 target_agent.pending_events.append(t_desc)
@@ -215,6 +215,25 @@ async def settle_all_intents(
         if observable:
             logs.append(f"  [{agent_name}] 内心: {internal[:80]}")
             logs.append(f"  [{agent_name}] 行为: {observable[:80]}")
+
+        # ────────────────────────────
+        # 9.5. 记忆管理算子 (Memory Operations)
+        # ────────────────────────────
+        search_memory = action.get("search_memory")
+        if search_memory:
+            # 简单的局部匹配，模拟 Retrieval Engine 介入
+            matches = [mem["text"] for mem in agent.memory_stream if search_memory.lower() in mem["text"].lower()]
+            if matches:
+                feedback_events.append(f"[记忆检索成功] 关于'{search_memory}'的最相关记忆: {matches[-1]}")
+                logs.append(f"  [记忆检索] {agent_name} 成功回忆起了关于 '{search_memory}' 的信息。")
+            else:
+                feedback_events.append(f"[记忆检索失败] 脑海中没有关于 '{search_memory}' 的相关记忆。")
+                logs.append(f"  [记忆检索] {agent_name} 试图回忆 '{search_memory}'，但失败了。")
+
+        discard_thought = action.get("discard_memory_thought")
+        if discard_thought:
+            feedback_events.append(f"[精神净化] 成功将执念 '{discard_thought}' 抛于脑后。")
+            logs.append(f"  [精神净化] {agent_name} 抛弃了执念: {discard_thought}")
 
         # ────────────────────────────────────
         # 10. 移动

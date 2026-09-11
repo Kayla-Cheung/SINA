@@ -3,7 +3,7 @@ import os
 import re
 
 state_file = "world_state_v3_backup.json"
-out_file = "world_state_v4_party.json"
+out_file = "world_state_v3_backup.json"
 
 if os.path.exists(state_file):
     with open(state_file, 'r', encoding='utf-8') as f:
@@ -12,11 +12,13 @@ if os.path.exists(state_file):
     for agent in data.get('agents', []):
         # 真正清空记忆流
         agent['memory_stream'] = []
-        # 清空物品栏
-        agent['inventory'] = []
+        # 清空物品栏 (需为字典)
+        agent['inventory'] = {}
         # 恢复体力
         agent['hunger'] = 30
         agent['status'] = 'idle'
+        agent['is_comatose'] = False
+        agent['is_dead'] = False
         agent['action_end_time'] = None
         agent['current_action'] = "刚从一场大梦中醒来"
         
