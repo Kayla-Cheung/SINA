@@ -18,14 +18,14 @@ class AgentState:
     def __init__(
         self,
         name: str,
-        traits: str,
-        intentions: list,
+        traits: str = "普通原始人",
+        intentions: list = None,
         start_time: datetime = None,
     ):
         # ── 身份与性格 ──
         self.name: str = name
         self.traits: str = traits          
-        self.intentions: list = intentions 
+        self.intentions: list = intentions if intentions is not None else [] 
 
         # ── 行动状态 ──
         self.current_action: str = "发呆中"

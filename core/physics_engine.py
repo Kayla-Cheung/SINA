@@ -82,16 +82,32 @@ class PhysicsEngine:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         physics_path = os.path.join(base_dir, "worlds", world_name, "config", "physics.json")
         
+        DEFAULT_MATERIALS = {
+            "BERRY": {"nutrition": 3, "disease_chance": 0.0, "spoil_rate": 0.1},
+            "MEAT": {"nutrition": 5, "disease_chance": 0.4, "spoil_rate": 0.3},
+            "COOKED_MEAT": {"nutrition": 8, "disease_chance": 0.05, "spoil_rate": 0.05},
+            "STONE": {"nutrition": 0, "disease_chance": 1.0, "spoil_rate": 0.0},
+            "WOOD": {"nutrition": 0, "disease_chance": 1.0, "spoil_rate": 0.0},
+            "TORCH": {"nutrition": 0, "disease_chance": 1.0, "spoil_rate": 0.0},
+            "SPEAR": {"nutrition": 0, "disease_chance": 1.0, "spoil_rate": 0.0},
+        }
+        DEFAULT_WEAPONS = {
+            "FIST": 1.0,
+            "STONE": 1.2,
+            "TORCH": 1.5,
+            "SPEAR": 3.0,
+        }
+
         if os.path.exists(physics_path):
             with open(physics_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            self.material_properties = data.get("material_properties", {})
+            self.material_properties = {**DEFAULT_MATERIALS, **data.get("material_properties", {})}
             self.terrain_hazards = data.get("terrain_hazards", {})
-            self.weapon_modifiers = data.get("weapon_modifiers", {"FIST": 1.0})
+            self.weapon_modifiers = {**DEFAULT_WEAPONS, **data.get("weapon_modifiers", {})}
         else:
-            self.material_properties = {}
+            self.material_properties = DEFAULT_MATERIALS
             self.terrain_hazards = {}
-            self.weapon_modifiers = {"FIST": 1.0}
+            self.weapon_modifiers = DEFAULT_WEAPONS
 
         # ── 配方列表（可通过 Laplace Oracle 动态扩展） ──
         self.recipes: list[Recipe] = []
@@ -211,7 +227,7 @@ class PhysicsEngine:
         # 确定武器
         def _get_best_weapon(agent) -> tuple[str, float]:
             best_weapon = "FIST"
-            best_modifier = self.weapon_modifiers["FIST"]
+            best_modifier = self.weapon_modifiers.get("FIST", 1.0)
             for weapon, modifier in self.weapon_modifiers.items():
                 if weapon != "FIST" and agent.inventory.get(weapon, 0) > 0:
                     if modifier > best_modifier:

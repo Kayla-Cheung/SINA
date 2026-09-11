@@ -153,15 +153,27 @@ class Proposal:
         self.status: str = "pending"          # 'pending' | 'approved' | 'rejected' | 'oracle_decided'
         self.oracle_verdict: dict | None = None  # Laplace Oracle 裁决结果
 
+    def _is_yes(self, v) -> bool:
+        if isinstance(v, dict):
+            v = v.get("vote", "")
+        v_str = str(v).strip().upper()
+        return v_str in ("YES", "APPROVE", "TRUE", "1")
+
+    def _is_no(self, v) -> bool:
+        if isinstance(v, dict):
+            v = v.get("vote", "")
+        v_str = str(v).strip().upper()
+        return v_str in ("NO", "REJECT", "FALSE", "0")
+
     @property
     def approval_count(self) -> int:
-        """赞成票数。"""
-        return sum(1 for v in self.votes.values() if v == "approve")
+        """赞成票数（支持 YES / approve / True 格式）。"""
+        return sum(1 for v in self.votes.values() if self._is_yes(v))
 
     @property
     def rejection_count(self) -> int:
-        """反对票数。"""
-        return sum(1 for v in self.votes.values() if v == "reject")
+        """反对票数（支持 NO / reject / False 格式）。"""
+        return sum(1 for v in self.votes.values() if self._is_no(v))
 
     def __repr__(self) -> str:
         return (

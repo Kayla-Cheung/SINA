@@ -311,6 +311,7 @@ class PhysicsSettleNode(DAGNode):
                 environment=sim.environment,
                 clock=sim.clock,
                 is_night=is_night,
+                active_proposal=sim.active_proposal,
             )
             sim.current_logs = logs
             for log_line in logs:
@@ -328,12 +329,12 @@ class OracleJudgeNode(DAGNode):
         proposal = sim.active_proposal[0]
         if proposal:
             alive_names = [n for n, a in sim.world_agents.items() if not a.is_dead and not a.is_comatose]
-            all_voted = all(n in proposal.votes for n in alive_names)
+            all_voted = len(alive_names) > 0 and all(n in proposal.votes for n in alive_names)
 
             if all_voted:
                 print("\n  📋 Phase 3: 提案裁决 [DAG算子]")
-                yes_count = sum(1 for v in proposal.votes.values() if v in ("YES", "approve"))
-                total = len(proposal.votes)
+                yes_count = proposal.approval_count
+                total = len(alive_names)
 
                 if yes_count == total:
                     print(f"    ✅ 提案全票通过 ({yes_count}/{total})，请求 Oracle 裁决...")

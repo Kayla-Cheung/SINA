@@ -7,9 +7,15 @@ settlement_engine.py — SINA v4 物理结算引擎
 """
 
 from datetime import datetime
-from agent_state import AgentState
-from physics_engine import PhysicsEngine
-from environment import SandboxEnvironment
+
+try:
+    from .agent_state import AgentState
+    from .physics_engine import PhysicsEngine
+    from .environment import SandboxEnvironment
+except ImportError:
+    from agent_state import AgentState
+    from physics_engine import PhysicsEngine
+    from environment import SandboxEnvironment
 
 async def store_observation(agent: AgentState, text: str, clock: datetime):
     """将观察写入记忆流并增加重要性"""
@@ -22,11 +28,12 @@ async def store_observation(agent: AgentState, text: str, clock: datetime):
 
 async def settle_all_intents(
     intents: list,
-    world_agents: dict[str, AgentState],
-    physics: PhysicsEngine,
-    environment: SandboxEnvironment,
+    world_agents: dict,
+    physics,
+    environment,
     clock: datetime,
     is_night: bool,
+    active_proposal: list = None,
 ) -> list[str]:
     logs = []
     time_str = clock.strftime("%H:%M")
@@ -201,6 +208,30 @@ async def settle_all_intents(
                 current_node.inventory[drop_tag] = current_node.inventory.get(drop_tag, 0) + 1
                 feedback_events.append(f"[物理现实] 你放下了 {drop_tag}。")
                 logs.append(f"  [放下] {agent_name} 放下了 {drop_tag}。")
+
+        # ────────────────────────────────────
+        # 8.5. 蓝图提案与投票结算 (Social & Law)
+        # ────────────────────────────────────
+        propose_bp = action.get("propose_blueprint")
+        if propose_bp and active_proposal is not None:
+            if active_proposal[0] is None:
+                from action_intent import Proposal
+                active_proposal[0] = Proposal(agent_name, propose_bp)
+                feedback_events.append(f"[提案发布] 你成功发起了新提案: '{propose_bp}'。")
+                logs.append(f"  [提案发起] {agent_name} 提出了提案: '{propose_bp}'")
+                for a_name, a_obj in world_agents.items():
+                    if a_name != agent_name and not a_obj.is_dead and not a_obj.is_comatose:
+                        a_obj.pending_events.append(
+                            f"【新提案提醒】{agent_name} 发起了提案：「{propose_bp}」，请在下一轮考虑投票！"
+                        )
+            else:
+                feedback_events.append(f"[提案冲突] 当前已有活跃提案正在审议中，无法重复发起。")
+
+        vote_bp = action.get("vote_on_blueprint")
+        if vote_bp and active_proposal is not None and active_proposal[0] is not None:
+            active_proposal[0].votes[agent_name] = vote_bp
+            feedback_events.append(f"[投票记录] 你对提案投了: {vote_bp}")
+            logs.append(f"  [提案投票] {agent_name} 投票: {vote_bp}")
 
         # ────────────────────────────────────
         # 9. 社交广播 & 内心想法
