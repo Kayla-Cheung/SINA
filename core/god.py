@@ -2,11 +2,17 @@
 God Agent — maps free-form character intentions to world actions (or idle/reject).
 """
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 
-from .llm import LLMClient
+from pydantic import BaseModel, Field
+
 from .models import AgentState, ToolCall
-from .parse_tool import parse_tool_call
+from .parse_tool import parse_tool_call, parse_tool_call_from_dict
+
+try:
+    from .gateway import gateway
+except ImportError:
+    pass
 
 
 @dataclass
@@ -15,6 +21,16 @@ class GodDecision:
     tool: Optional[ToolCall] = None
     reason: str = ""
     raw_response: str = ""
+
+
+class GodDecisionOutput(BaseModel):
+    kind: Literal["action", "idle", "reject"] = Field(
+        ..., description="The type of decision: 'action', 'idle', or 'reject'"
+    )
+    tool: Optional[ToolCall] = Field(
+        None, description="The tool call to execute, required if kind is 'action'"
+    )
+    reason: str = Field(..., description="Brief reason for the decision")
 
 
 class GodAgent:
@@ -27,28 +43,26 @@ Your job is to decide how that maps onto the physical world.
 
 You may choose EXACTLY ONE of these outcomes:
 
-1) ACTION — emit exactly one tool call, using ONLY people/places/objects listed in the observation.
+1) action — emit exactly one tool call, using ONLY people/places/objects listed in the observation.
    Available tools (exact formats):
-   - walk(destination="LocationName")
-   - chat(target="PersonName", message="opening line to say")
-   - interact(object="ObjectName", action="what they do with it")
+   - tool: "walk", args: {"destination": "LocationName"}
+   - tool: "chat", args: {"target": "PersonName", "message": "opening line to say"}
+   - tool: "interact", args: {"object": "ObjectName", "action": "what they do with it"}
 
-2) IDLE — the character is only thinking, resting, or staying put with no world change.
-   Format: IDLE: <brief reason>
+2) idle — the character is only thinking, resting, or staying put with no world change.
 
-3) REJECT — the intention is impossible, hallucinated, contradictory, or cannot be mapped safely
+3) reject — the intention is impossible, hallucinated, contradictory, or cannot be mapped safely
    (e.g. unknown place/person, walking to a non-adjacent place, chatting with someone not present).
-   Format: REJECT: <brief reason>
 
 Rules:
-- Prefer ACTION when there is a clear, valid world effect.
-- Prefer IDLE for pure internal thought / waiting with no world effect.
-- Prefer REJECT for invalid or hallucinated targets — do not invent places, people, or objects.
-- For chat, set message to a natural opening line the character would say.
-- Output ONLY the ACTION tool call line, or an IDLE:/REJECT: line. No other commentary."""
+- Prefer 'action' when there is a clear, valid world effect.
+- Prefer 'idle' for pure internal thought / waiting with no world effect.
+- Prefer 'reject' for invalid or hallucinated targets — do not invent places, people, or objects.
+- For chat, set message to a natural opening line the character would say."""
 
-    def __init__(self, llm: LLMClient):
-        self.llm = llm
+    def __init__(self, llm=None):
+        # llm parameter is ignored in favor of the singleton gateway
+        pass
 
     def _format_observation(self, obs: Dict[str, Any], agent: AgentState) -> str:
         locs = obs.get("locations") or []
@@ -87,14 +101,14 @@ Objects present:
 Character's intention (natural language):
 \"\"\"{intention.strip()}\"\"\"
 
-Decide: ACTION tool call, IDLE:, or REJECT:"""
+Decide: 'action', 'idle', or 'reject'."""
 
         try:
-            raw = await self.llm.chat(
+            output = await gateway.generate_structured(
                 system_prompt=self.SYSTEM,
                 user_prompt=user,
+                response_model=GodDecisionOutput,
                 temperature=0.2,
-                max_tokens=512,
             )
         except Exception as e:
             return GodDecision(
@@ -103,48 +117,31 @@ Decide: ACTION tool call, IDLE:, or REJECT:"""
                 raw_response="",
             )
 
-        return self._parse_decision(raw or "")
+        if not output:
+             return GodDecision(
+                kind="reject",
+                reason="God agent failed to produce valid structured output",
+                raw_response="",
+            )
 
-    def _parse_decision(self, raw: str) -> GodDecision:
-        text = raw.strip()
-        upper = text.upper()
-
-        # Explicit REJECT / IDLE markers (check before tool parse)
-        for prefix, kind in (("REJECT:", "reject"), ("IDLE:", "idle")):
-            idx = upper.find(prefix)
-            if idx != -1:
-                reason = text[idx + len(prefix):].strip() or kind
+        # Build raw string representation
+        raw_resp = output.model_dump_json() if hasattr(output, 'model_dump_json') else output.json()
+        
+        parsed_tool = None
+        if output.kind == "action" and output.tool:
+            # We enforce Pydantic dict representation
+            tool_dict = output.tool.model_dump() if hasattr(output.tool, 'model_dump') else output.tool.dict()
+            parsed_tool = parse_tool_call_from_dict(tool_dict)
+            if not parsed_tool:
                 return GodDecision(
-                    kind=kind,
-                    reason=reason,
-                    raw_response=raw,
+                    kind="reject",
+                    reason="Invalid tool call structure",
+                    raw_response=raw_resp,
                 )
 
-        tool = parse_tool_call(text)
-        if tool and tool.tool in ("walk", "chat", "interact"):
-            return GodDecision(
-                kind="action",
-                tool=tool,
-                reason="mapped to tool",
-                raw_response=raw,
-            )
-
-        # Fallback keywords
-        if upper.startswith("IDLE") or "\nIDLE" in upper:
-            return GodDecision(
-                kind="idle",
-                reason=text[:200],
-                raw_response=raw,
-            )
-        if upper.startswith("REJECT") or "\nREJECT" in upper:
-            return GodDecision(
-                kind="reject",
-                reason=text[:200],
-                raw_response=raw,
-            )
-
         return GodDecision(
-            kind="reject",
-            reason="God output could not be parsed into a valid action",
-            raw_response=raw,
+            kind=output.kind,
+            tool=parsed_tool,
+            reason=output.reason,
+            raw_response=raw_resp,
         )

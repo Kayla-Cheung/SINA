@@ -388,6 +388,68 @@ class LaplaceOracle:
 
 
 # ============================================================
+# 4. Reality Check Middleware
+# ============================================================
+
+class RealityCheckResult(BaseModel):
+    """Result of the reality check validation."""
+    is_grounded: bool = Field(description="whether the action matched reality")
+    original_action: str = Field(description="the raw action text")
+    rectified_action: str = Field(description="the corrected narrative (same as original if grounded)")
+    hallucination_flags: List[str] = Field(description="list of detected hallucinations")
+    should_proceed: bool = Field(description="whether settlement should continue with this action")
+
+
+class RealityCheckMiddleware:
+    """
+    Intercepts Agent actions BEFORE settlement, comparing narrative intent
+    against absolute physical world state to prevent Self-fulfilling Memory Hallucinations.
+    """
+    def check(self, action_text: str, thought_text: str, agent_state: dict, room_state: dict) -> RealityCheckResult:
+        flags = []
+        combined_text = (action_text + " " + thought_text).lower()
+        
+        # 1. Target presence & location
+        agents_present = [a.lower() for a in room_state.get("agents_present", [])]
+        agents_known = [a.lower() for a in room_state.get("agents_known", [])]
+        
+        for a in agents_known:
+            if a in combined_text and a not in agents_present:
+                flags.append(f"Target not in same room: {a}")
+                
+        # 2. Target status (alive/dead)
+        agents_dead = [a.lower() for a in room_state.get("agents_dead", [])]
+        for a in agents_dead:
+            if a in combined_text:
+                flags.append(f"Target is dead: {a}")
+                
+        # 3. Inventory items
+        inventory = [i.lower() for i in agent_state.get("inventory", [])]
+        known_items = [i.lower() for i in room_state.get("known_items", [])]
+        
+        for i in known_items:
+            if i in combined_text and i not in inventory:
+                flags.append(f"Claimed item not in inventory: {i}")
+
+        is_grounded = len(flags) == 0
+        should_proceed = is_grounded
+        
+        # Rectify action if not grounded
+        if is_grounded:
+            rectified_action = action_text
+        else:
+            rectified_action = f"[SYSTEM: Action failed due to hallucination] {action_text}"
+
+        return RealityCheckResult(
+            is_grounded=is_grounded,
+            original_action=action_text,
+            rectified_action=rectified_action,
+            hallucination_flags=flags,
+            should_proceed=should_proceed
+        )
+
+
+# ============================================================
 # Test Harness
 # ============================================================
 if __name__ == '__main__':
