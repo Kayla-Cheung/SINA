@@ -223,6 +223,8 @@ class StandaloneWorld:
             clock=self.clock,
             is_night=is_night,
             active_proposal=self.active_proposal,
+            memory_manager=self.memory_manager,
+            tick=self.tick_count,
         )
         self.current_logs = logs
 

@@ -30,8 +30,20 @@ class ObsidianVaultObserver:
         self.items_dir = os.path.join(self.vault_dir, "Items")
         self.memories_dir = os.path.join(self.vault_dir, "Memories")
         self.events_dir = os.path.join(self.vault_dir, "Events")
-
         self._ensure_directories()
+
+    def _write_if_changed(self, file_path: str, content: str) -> bool:
+        """Write content only if changed or file does not exist. Returns True if written."""
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    if f.read() == content:
+                        return False
+            except Exception:
+                pass
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        return True
 
     def _ensure_directories(self) -> None:
         """Create standard folder layout inside the vault and purge micro files if macro_only."""
@@ -136,8 +148,7 @@ class ObsidianVaultObserver:
                 f"{neighbors_block}\n"
             )
 
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            self._write_if_changed(file_path, content)
 
     def _sync_agents(self, sim: Any, memory_manager: Optional[Any]) -> None:
         """Render each agent with links to current room, inventory, allies, and memory nodes."""
@@ -218,8 +229,7 @@ class ObsidianVaultObserver:
                 f"{memory_block}\n"
             )
 
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            self._write_if_changed(file_path, content)
 
     def _write_single_memory(self, memory: Any, file_name: str) -> None:
         """Write an episodic memory note into Memories folder."""
@@ -250,8 +260,7 @@ class ObsidianVaultObserver:
             f"{involved_block}\n"
         )
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(content)
+        self._write_if_changed(file_path, content)
 
     def _sync_items(self, sim: Any) -> None:
         """Render items with descriptions and physics properties (skipped in macro_only mode)."""
@@ -285,8 +294,7 @@ class ObsidianVaultObserver:
                 f"- **生病概率**：`{disease_chance * 100:.1f}%`\n"
             )
 
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            self._write_if_changed(file_path, content)
 
     def _sync_events(self, tick: int, logs: List[str], sim: Any) -> None:
         """Log key settlement events into Events folder and continuous chronicle."""
@@ -322,8 +330,7 @@ class ObsidianVaultObserver:
                 + "\n".join(formatted_lines)
                 + "\n"
             )
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            self._write_if_changed(file_path, content)
 
         # 2. Always maintain a continuous live chronicle stream: 01_WORLD_CHRONICLE.md
         chronicle_path = os.path.join(self.vault_dir, "01_WORLD_CHRONICLE.md")
@@ -391,8 +398,7 @@ class ObsidianVaultObserver:
             f"3. **局部心智透视**：点开任意 `Agents/xxx.md`，右侧开启 **Local Graph**，深度设为 `2`，实时透视其人际圈与记忆网络。\n"
         )
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(content)
+        self._write_if_changed(file_path, content)
 
     def _sync_canvas(self, sim: Any) -> None:
         """Generate an interactive Obsidian .canvas JSON file mapping rooms & agents in 2D space."""

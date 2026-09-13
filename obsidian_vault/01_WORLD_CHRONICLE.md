@@ -207,3 +207,113 @@ tags: [chronicle, live_stream]
 
 ---
 
+### ⏱️ Tick 0001 [2026-01-01 08:15]
+- [进食] [[Agents/Ryan]] 吃了 COFFEE，恢复 2 饥饿值。
+- [[[Agents/Ryan]]] 内心: 有点饿了，先享用一份 COFFEE 补充能量。
+- [[[Agents/Ryan]]] 行为: 正在品尝美味的 COFFEE
+- [[[Agents/Isabella]]] 内心: 处理完手头事务，动身前往 [[Rooms/Park]]。
+- [[[Agents/Isabella]]] 行为: 漫步前往小镇 [[Rooms/Park]]
+- [移动] [[Agents/Isabella]] 移动到 [[Rooms/Park]]
+- [[[Agents/Tom]]] 内心: 处理完手头事务，动身前往 [[Rooms/Park]]。
+- [[[Agents/Tom]]] 行为: 漫步前往小镇 [[Rooms/Park]]
+- [移动] [[Agents/Tom]] 移动到 [[Rooms/Park]]
+- [[[Agents/Klaus]]] 内心: 处理完手头事务，动身前往 [[Rooms/Library]]。
+- [[[Agents/Klaus]]] 行为: 漫步前往小镇 [[Rooms/Library]]
+- [移动] [[Agents/Klaus]] 移动到 [[Rooms/Library]]
+- [[[Agents/Maria]]] 内心: 处理完手头事务，动身前往 [[Rooms/Library]]。
+- [[[Agents/Maria]]] 行为: 漫步前往小镇 [[Rooms/Library]]
+- [移动] [[Agents/Maria]] 移动到 [[Rooms/Library]]
+- [拾取] [[Agents/Sam]] 在 [[Rooms/Supermarket]] 捡起了 BREAD。
+- [[[Agents/Sam]]] 内心: 在超市货架前选购日常食品 BREAD。
+- [[[Agents/Sam]]] 行为: 从货架取下 BREAD 并完成结账
+
+---
+
+### ⏱️ Tick 0002 [2026-01-01 08:30]
+- [[[Agents/Isabella]]] 内心: 处理完手头事务，动身前往 [[Rooms/Supermarket]]。
+- [[[Agents/Isabella]]] 行为: 漫步前往小镇 [[Rooms/Supermarket]]
+- [移动] [[Agents/Isabella]] 移动到 [[Rooms/Supermarket]]
+- [[[Agents/Tom]]] 内心: 处理完手头事务，动身前往 [[Rooms/Supermarket]]。
+- [[[Agents/Tom]]] 行为: 漫步前往小镇 [[Rooms/Supermarket]]
+- [移动] [[Agents/Tom]] 移动到 [[Rooms/Supermarket]]
+- [[[Agents/Klaus]]] 内心: 处理完手头事务，动身前往 [[Rooms/Supermarket]]。
+- [[[Agents/Klaus]]] 行为: 漫步前往小镇 [[Rooms/Supermarket]]
+- [移动] [[Agents/Klaus]] 移动到 [[Rooms/Supermarket]]
+- [[[Agents/Maria]]] 内心: 处理完手头事务，动身前往 [[Rooms/Supermarket]]。
+- [[[Agents/Maria]]] 行为: 漫步前往小镇 [[Rooms/Supermarket]]
+- [移动] [[Agents/Maria]] 移动到 [[Rooms/Supermarket]]
+- [拾取] [[Agents/Sam]] 在 [[Rooms/Supermarket]] 捡起了 APPLE。
+- [[[Agents/Sam]]] 内心: 在超市货架前选购日常食品 APPLE。
+- [[[Agents/Sam]]] 行为: 从货架取下 APPLE 并完成结账
+- [拾取] [[Agents/Ryan]] 在 [[Rooms/Cafe]] 捡起了 COFFEE。
+- [[[Agents/Ryan]]] 内心: 闻到咖啡馆的香气，购买一份 COFFEE。
+- [[[Agents/Ryan]]] 行为: 在咖啡馆点了一份新鲜的 COFFEE
+
+---
+
+### ⏱️ Tick 0003 [2026-01-01 08:45]
+- [进食] [[Agents/Sam]] 吃了 BREAD，恢复 8 饥饿值。
+- [[[Agents/Sam]]] 内心: 有点饿了，先享用一份 BREAD 补充能量。
+- [[[Agents/Sam]]] 行为: 正在品尝美味的 BREAD
+- [进食] [[Agents/Ryan]] 吃了 COFFEE，恢复 2 饥饿值。
+- [[[Agents/Ryan]]] 内心: 有点饿了，先享用一份 COFFEE 补充能量。
+- [[[Agents/Ryan]]] 行为: 正在品尝美味的 COFFEE
+- [拾取] [[Agents/Isabella]] 在 [[Rooms/Supermarket]] 捡起了 BREAD。
+- [[[Agents/Isabella]]] 内心: 在超市货架前选购日常食品 BREAD。
+- [[[Agents/Isabella]]] 行为: 从货架取下 BREAD 并完成结账
+- [拾取] [[Agents/Tom]] 在 [[Rooms/Supermarket]] 捡起了 BREAD。
+- [[[Agents/Tom]]] 内心: 在超市货架前选购日常食品 BREAD。
+- [[[Agents/Tom]]] 行为: 从货架取下 BREAD 并完成结账
+- [拾取] [[Agents/Klaus]] 在 [[Rooms/Supermarket]] 捡起了 BREAD。
+- [[[Agents/Klaus]]] 内心: 在超市货架前选购日常食品 BREAD。
+- [[[Agents/Klaus]]] 行为: 从货架取下 BREAD 并完成结账
+- [拾取] [[Agents/Maria]] 在 [[Rooms/Supermarket]] 捡起了 APPLE。
+- [[[Agents/Maria]]] 内心: 在超市货架前选购日常食品 APPLE。
+- [[[Agents/Maria]]] 行为: 从货架取下 APPLE 并完成结账
+
+---
+
+### ⏱️ Tick 0004 [2026-01-01 09:00]
+- [进食] [[Agents/Tom]] 吃了 BREAD，恢复 8 饥饿值。
+- [[[Agents/Tom]]] 内心: 有点饿了，先享用一份 BREAD 补充能量。
+- [[[Agents/Tom]]] 行为: 正在品尝美味的 BREAD
+- [[[Agents/Klaus]]] 内心: 处理完手头事务，动身前往 [[Rooms/School]]。
+- [[[Agents/Klaus]]] 行为: 漫步前往小镇 [[Rooms/School]]
+- [移动] [[Agents/Klaus]] 移动到 [[Rooms/School]]
+- [[[Agents/Maria]]] 内心: 处理完手头事务，动身前往 [[Rooms/School]]。
+- [[[Agents/Maria]]] 行为: 漫步前往小镇 [[Rooms/School]]
+- [移动] [[Agents/Maria]] 移动到 [[Rooms/School]]
+- [拾取] [[Agents/Isabella]] 在 [[Rooms/Supermarket]] 捡起了 APPLE。
+- [[[Agents/Isabella]]] 内心: 在超市货架前选购日常食品 APPLE。
+- [[[Agents/Isabella]]] 行为: 从货架取下 APPLE 并完成结账
+- [拾取] [[Agents/Sam]] 在 [[Rooms/Supermarket]] 捡起了 BREAD。
+- [[[Agents/Sam]]] 内心: 在超市货架前选购日常食品 BREAD。
+- [[[Agents/Sam]]] 行为: 从货架取下 BREAD 并完成结账
+- [拾取] [[Agents/Ryan]] 在 [[Rooms/Cafe]] 捡起了 COFFEE。
+- [[[Agents/Ryan]]] 内心: 闻到咖啡馆的香气，购买一份 COFFEE。
+- [[[Agents/Ryan]]] 行为: 在咖啡馆点了一份新鲜的 COFFEE
+
+---
+
+### ⏱️ Tick 0005 [2026-01-01 09:15]
+- [进食] [[Agents/Klaus]] 吃了 BREAD，恢复 8 饥饿值。
+- [[[Agents/Klaus]]] 内心: 有点饿了，先享用一份 BREAD 补充能量。
+- [[[Agents/Klaus]]] 行为: 正在品尝美味的 BREAD
+- [进食] [[Agents/Ryan]] 吃了 COFFEE，恢复 2 饥饿值。
+- [[[Agents/Ryan]]] 内心: 有点饿了，先享用一份 COFFEE 补充能量。
+- [[[Agents/Ryan]]] 行为: 正在品尝美味的 COFFEE
+- [[[Agents/Isabella]]] 内心: 处理完手头事务，动身前往 [[Rooms/Cafe]]。
+- [[[Agents/Isabella]]] 行为: 漫步前往小镇 [[Rooms/Cafe]]
+- [移动] [[Agents/Isabella]] 移动到 [[Rooms/Cafe]]
+- [[[Agents/Maria]]] 内心: 处理完手头事务，动身前往 [[Rooms/Cafe]]。
+- [[[Agents/Maria]]] 行为: 漫步前往小镇 [[Rooms/Cafe]]
+- [移动] [[Agents/Maria]] 移动到 [[Rooms/Cafe]]
+- [[[Agents/Sam]]] 内心: 处理完手头事务，动身前往 [[Rooms/Cafe]]。
+- [[[Agents/Sam]]] 行为: 漫步前往小镇 [[Rooms/Cafe]]
+- [移动] [[Agents/Sam]] 移动到 [[Rooms/Cafe]]
+- [拾取] [[Agents/Tom]] 在 [[Rooms/Supermarket]] 捡起了 BREAD。
+- [[[Agents/Tom]]] 内心: 在超市货架前选购日常食品 BREAD。
+- [[[Agents/Tom]]] 行为: 从货架取下 BREAD 并完成结账
+
+---
+

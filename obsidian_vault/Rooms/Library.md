@@ -1,15 +1,14 @@
 ---
 type: room
 room_name: Library
-occupant_count: 2
+occupant_count: 0
 tags: [room, place, spatial_node]
 ---
 
 # 🏛️ 空间节点：Library
 
 ## 👥 在场智能体 (Occupants)
-- [[Agents/Klaus]]
-- [[Agents/Maria]]
+- *(空无一人)*
 
 ## 📦 空间物资 (Inventory)
 - **BOOK** × 100

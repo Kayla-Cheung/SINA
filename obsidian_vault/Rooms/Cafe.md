@@ -1,7 +1,7 @@
 ---
 type: room
 room_name: Cafe
-occupant_count: 1
+occupant_count: 4
 tags: [room, place, spatial_node]
 ---
 
@@ -9,10 +9,13 @@ tags: [room, place, spatial_node]
 
 ## 👥 在场智能体 (Occupants)
 - [[Agents/Ryan]]
+- [[Agents/Isabella]]
+- [[Agents/Maria]]
+- [[Agents/Sam]]
 
 ## 📦 空间物资 (Inventory)
-- **COFFEE** × 49
-- **PASTRY** × 15
+- **COFFEE** × 38
+- **PASTRY** × 10
 
 ## 🚪 连通区域 (Connected Portals)
 - [[Rooms/Library]]

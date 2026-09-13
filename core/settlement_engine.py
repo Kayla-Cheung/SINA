@@ -34,6 +34,8 @@ async def settle_all_intents(
     clock: datetime,
     is_night: bool,
     active_proposal: list = None,
+    memory_manager=None,
+    tick: int = 1,
 ) -> list[str]:
     logs = []
     time_str = clock.strftime("%H:%M")
@@ -50,8 +52,7 @@ async def settle_all_intents(
         if not agent or agent.is_dead or agent.is_comatose:
             continue
 
-        # 基础代谢
-        agent.hunger -= 1
+        # 代谢由 Lifecycle / Phase 2 统一扣减，此处不再重复扣减
 
         current_node = environment.agent_locations.get(agent_name)
         if not current_node:
@@ -283,14 +284,35 @@ async def settle_all_intents(
                     logs.append(f"  [移动] {agent_name} 移动到 {dest.name}")
 
         # ────────────────────────────────────
-        # 11. 写入记忆
+        # 11. 写入记忆 / 反馈流
         # ────────────────────────────────────
         memory_text = f"行为: {observable}"
         if internal:
             memory_text += f" | 内心: {internal}"
-        await store_observation(agent, memory_text, clock)
-
-        for event in feedback_events:
-            await store_observation(agent, event, clock)
+            
+        if memory_manager is not None:
+            try:
+                from sina.memory.types import MemoryType
+                memory_manager.record_event(
+                    agent_id=agent_name,
+                    tick=tick,
+                    content=memory_text,
+                    memory_type=MemoryType.ACTION,
+                    location=current_node.name,
+                )
+                for event in feedback_events:
+                    memory_manager.record_event(
+                        agent_id=agent_name,
+                        tick=tick,
+                        content=event,
+                        memory_type=MemoryType.OBSERVATION,
+                        location=current_node.name,
+                    )
+            except Exception:
+                pass
+        else:
+            await store_observation(agent, memory_text, clock)
+            for event in feedback_events:
+                await store_observation(agent, event, clock)
 
     return logs

@@ -11,10 +11,14 @@
             "id": "3a5e88c0d1ea3218",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "关系图谱"
+              "type": "markdown",
+              "state": {
+                "file": "01_WORLD_CHRONICLE.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "01_WORLD_CHRONICLE"
             }
           }
         ]
@@ -51,7 +55,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "tag:#tick_log",
+                "query": "tag:#live_stream",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -75,7 +79,8 @@
               "title": "书签"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -95,6 +100,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "01_WORLD_CHRONICLE.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -113,6 +119,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "01_WORLD_CHRONICLE.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -155,6 +162,7 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "01_WORLD_CHRONICLE.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -183,6 +191,8 @@
   },
   "active": "3a5e88c0d1ea3218",
   "lastOpenFiles": [
+    "Rooms/Riverbank.md",
+    "Rooms/Cafe.md",
     "Agents/Ryan.md",
     "Agents/Sam.md",
     "Agents/Maria.md",
@@ -194,7 +204,6 @@
     "Rooms/Supermarket.md",
     "Rooms/Park.md",
     "Rooms/Library.md",
-    "Rooms/Cafe.md",
     "01_WORLD_CHRONICLE.md",
     "Rooms/Dense_Forest.md",
     "Agents/Gamma_Scholar.md",
