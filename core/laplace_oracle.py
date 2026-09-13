@@ -1,18 +1,30 @@
 """
-laplace_oracle.py — SINA v4 拉普拉斯妖判定模块 (Pydantic 强类型版)
-================================================
-宇宙的沉默仲裁者。接收智能体提出的行为方案，判定其是否符合物理法则。
-融合 SOTOPIA-EVAL 7 维打分（截取核心 3 维：目标、可信度、守密）。
+laplace_oracle.py — SINA v4 GWT-Gated Laplace Oracle (Three-Branch Arbitration)
+=================================================================================
+Architecture: Generator → Critic → Meta-Arbiter (inspired by GWT "Theater of Mind")
+
+First Principles:
+  [P1] Physical conservation supersedes all semantic generation.
+       Plausibility ≠ Feasibility. Validation must be independent of generator.
+  [P2] Generation and falsification require cognitive asymmetry.
+       High-T for divergent hypothesis, zero-T for deterministic critique.
+  [P3] A hard causal gate (P_Physics) is injected at every arbitration stage
+       as an invariant anchor, preventing model drift and pseudoscience pollution.
 """
 
 import json
-from typing import Literal, Optional, Dict, Any
+from typing import Literal, Optional, Dict, Any, List
 from pydantic import BaseModel, Field
-from gateway import gateway
 
-# ==========================================
-# 1. 定义极其严苛的 Pydantic 数据模式 (Schema)
-# ==========================================
+try:
+    from .gateway import gateway
+except ImportError:
+    from gateway import gateway
+
+
+# ============================================================
+# 1. Pydantic Data Schemas
+# ============================================================
 
 class Recipe(BaseModel):
     name: str = Field(description="recipe_id（必须为英文大写下划线命名，如 SHARP_STONE）")
@@ -22,52 +34,146 @@ class Recipe(BaseModel):
     new_material_properties: Optional[Dict[str, Any]] = Field(None, description="新材料的物理属性字典")
     description: str = Field(description="该配方的简要功能说明")
 
+
 class Meme(BaseModel):
     content: str = Field(description="文化信念或迷信的具体内容")
     category: Literal["religion", "social_contract", "taboo", "superstition"]
     penalty_description: str = Field(description="违反该信念会遭到的惩罚（信徒视角）")
 
-class LaplaceVerdict(BaseModel):
-    verdict: Literal["PHYSICS", "SOCIAL", "SUPERSTITION"]
-    reasoning: str = Field(description="一句话解释判定原因，基于物理常识或社会学原理")
-    
-    # 注入 SOTOPIA 评估指标
-    eval_goal: int = Field(description="目标达成度 (0到10)。0=完全失败，10=目标完美达成", default=0)
-    eval_believability: int = Field(description="人设可信度 (0到10)。该行为是否符合其种族或部落设定，0=极度违和，10=极度自然", default=5)
-    eval_secret: int = Field(description="守密程度 (-10到0)。-10=底牌完全泄露给他人，0=完美伪装意图", default=0)
-    
-    recipe: Optional[Recipe] = Field(None, description="当 verdict 为 PHYSICS 时必须提供，描述物理合成路径")
-    meme: Optional[Meme] = Field(None, description="当 verdict 为 SOCIAL 或 SUPERSTITION 时必须提供，描述文化基因")
 
-# ==========================================
-# 2. 拉普拉斯裁判引擎
-# ==========================================
+class HypothesisOutput(BaseModel):
+    """Generator Agent output: divergent hypothesis for a proposed action."""
+    verdict_hypothesis: Literal["PHYSICS", "SOCIAL", "SUPERSTITION"] = Field(
+        description="初步分类假说: PHYSICS=物理变换, SOCIAL=社会契约, SUPERSTITION=迷信仪式"
+    )
+    reasoning_chain: str = Field(
+        description="推理链: 列出反应所需的原子步骤、能量来源与前提科技条件"
+    )
+    recipe: Optional[Recipe] = Field(
+        None, description="当假说为 PHYSICS 时必须提供，描述物理合成路径"
+    )
+    meme: Optional[Meme] = Field(
+        None, description="当假说为 SOCIAL/SUPERSTITION 时提供"
+    )
+
+    # SOTOPIA evaluation dimensions
+    eval_goal: int = Field(0, description="目标达成度 (0-10)")
+    eval_believability: int = Field(5, description="人设可信度 (0-10)")
+    eval_secret: int = Field(0, description="守密程度 (-10 to 0)")
+
+
+class CriticOutput(BaseModel):
+    """Critic Agent output: adversarial falsification at zero temperature."""
+    feasibility_score: int = Field(
+        description="物理可行性评分 (-5 到 +5)。"
+                    "-5=严重违反物理定律(如无中生有), "
+                    "0=存疑但不确定, "
+                    "+5=完全符合已知物理化学规律"
+    )
+    counterexamples: List[str] = Field(
+        description="反例列表: 列出该假说可能违反的具体物理定律或因果断裂点"
+    )
+    conservation_check: bool = Field(
+        description="质量守恒校验: 产物元素集合是否为原料集合的子集或结合物"
+    )
+    energy_check: bool = Field(
+        description="能级校验: 高复杂度产物是否具备显式的高能量输入（火源/高温/电力）"
+    )
+    causal_check: bool = Field(
+        description="因果链校验: 所需前置科技是否已解锁"
+    )
+    critique_summary: str = Field(
+        description="一句话裁定: 简要说明该假说为何通过或不通过物理证伪"
+    )
+
+
+class LaplaceVerdict(BaseModel):
+    """Final arbitration output from Meta-Arbiter."""
+    verdict: Literal["PHYSICS", "SOCIAL", "SUPERSTITION"]
+    reasoning: str = Field(description="一句话解释最终判定原因")
+
+    eval_goal: int = Field(0, description="目标达成度 (0-10)")
+    eval_believability: int = Field(5, description="人设可信度 (0-10)")
+    eval_secret: int = Field(0, description="守密程度 (-10 to 0)")
+
+    feasibility_score: int = Field(0, description="Critic 物理可行性评分 (-5 to +5)")
+
+    recipe: Optional[Recipe] = Field(None)
+    meme: Optional[Meme] = Field(None)
+
+
+# ============================================================
+# 2. P_Physics: Immutable Physical Axiom Anchor
+# ============================================================
+
+P_PHYSICS_INVARIANT = """
+## 🔒 不可变物理公理锚点 (P_Physics Invariant)
+以下规则具有宪法级最高优先级，任何语义生成均不可违反：
+
+### 公理 1：质量守恒 (Conservation of Mass)
+产物中出现的所有元素/材料，必须从输入原料中可追溯来源。
+禁止无中生有：不可从 STONE + WOOD 直接产出含金属的产物。
+
+### 公理 2：能级约束 (Energy Level Constraint)
+低熵复杂产物（如冶炼金属、火药、玻璃）必须伴随显式高能量输入。
+仅靠"手工搓揉"或"石头敲击"不可达成化学键重组级别的变换。
+
+### 公理 3：科技树因果锁 (Tech Tree Causal Lock)
+科技具有严格的因果先后顺序。未解锁"基础冶金"前，
+禁止任何涉及金属工具的配方通过。未掌握"火的控制"前，
+禁止任何需要高温的配方通过。
+
+### 公理 4：时间成本下界 (Minimum Time Cost)
+任何物理变换的 time_cost 不可为 0。
+简单组装 >= 5 分钟, 加工烹饪 >= 15 分钟, 冶炼锻造 >= 60 分钟。
+"""
+
+
+# ============================================================
+# 3. Three-Branch GWT-Gated Oracle Engine
+# ============================================================
 
 class LaplaceOracle:
     """
-    拉普拉斯妖：宇宙的沉默仲裁者。
-    利用 AsyncLLMGateway 进行闭环的结构化输出与自纠错。
+    GWT-Gated Laplace Oracle: Three-Branch Arbitration State Machine.
+
+    Architecture:
+      1. Generator Agent (T=0.6): Divergent hypothesis synthesis with P_Physics injection.
+      2. Critic Agent   (T=0.0): Adversarial falsification with zero-temperature determinism.
+      3. Meta-Arbiter   (T=0.1): Final contextual arbitration combining Critic scores
+                                  and hard causal checks. Emits pass/reject verdict.
+
+    The P_Physics invariant is injected into ALL three stages as a hardware-level anchor.
     """
+
+    # Hard gate: minimum composite score for a PHYSICS recipe to be accepted
+    ACCEPT_THRESHOLD = 3.0
 
     def __init__(self):
         pass
 
-    async def judge(
+    # ─────────────────────────────────────────
+    # Stage 1: Generator Agent (Divergent, T=0.6)
+    # ─────────────────────────────────────────
+    async def _generate_hypothesis(
         self,
         proposal_content: str,
         current_tech_level: list[str],
-    ) -> LaplaceVerdict:
+    ) -> Optional[HypothesisOutput]:
         """
-        判定一个行为方案的物理可行性与社会学打分。返回强类型的 LaplaceVerdict 对象。
+        Divergent hypothesis generation with elevated temperature.
+        Explores creative but physically grounded synthesis paths.
         """
-        
         system_prompt = (
-            "你是一个严格的物理学家，同时也是宇宙的沉默仲裁者。\n"
-            "你的任务是判定一个前文明时代的智能体行为方案，并给出 SOTOPIA 维度的社会学打分。\n"
+            "你是一个富有创造力的物理学假说生成器。\n"
+            "你的任务是为智能体的行为提案生成一个详尽的物理/社会学假说。\n"
+            "你必须大胆探索可能的合成路径，但同时必须严格遵守以下物理公理：\n\n"
+            f"{P_PHYSICS_INVARIANT}\n\n"
             "判断规则：\n"
-            "1. PHYSICS：涉及物理变换，必须检查前提科技。可行则生成 recipe。\n"
-            "2. SOCIAL：社会契约或规则。生成 meme。\n"
+            "1. PHYSICS：涉及物理变换，必须检查前提科技树。可行则生成详细 recipe。\n"
+            "2. SOCIAL：社会契约或规则变更。生成 meme。\n"
             "3. SUPERSTITION：反物理的迷信仪式。生成 meme。\n"
+            "在 reasoning_chain 中，必须逐步列出反应的原子步骤、能量来源与前提条件。\n"
         )
 
         user_message = (
@@ -75,53 +181,245 @@ class LaplaceOracle:
             f"## 当前已解锁技术\n{current_tech_level}\n"
         )
 
-        # 核心改动：直接调用 gateway.generate_structured 进行强制类型解析和自闭环纠错！
-        verdict_obj = await gateway.generate_structured(
+        result = await gateway.generate_structured(
             system_prompt=system_prompt,
             user_prompt=user_message,
-            response_model=LaplaceVerdict,
-            temperature=0.0
+            response_model=HypothesisOutput,
+            temperature=0.6,
+        )
+        return result
+
+    # ─────────────────────────────────────────
+    # Stage 2: Critic Agent (Adversarial, T→0)
+    # ─────────────────────────────────────────
+    async def _critique_hypothesis(
+        self,
+        proposal_content: str,
+        hypothesis: HypothesisOutput,
+        current_tech_level: list[str],
+    ) -> Optional[CriticOutput]:
+        """
+        Zero-temperature adversarial falsification.
+        Applies strict logical verification against P_Physics axioms.
+        """
+        hypothesis_json = hypothesis.model_dump_json() if hasattr(hypothesis, 'model_dump_json') else hypothesis.json()
+
+        system_prompt = (
+            "你是一个极其严苛的物理学证伪审查员（Adversarial Critic）。\n"
+            "你的唯一任务是寻找假说中的物理漏洞、因果断裂和守恒违反。\n"
+            "你必须以零容忍的态度审查以下假说，并逐一校验三大硬公理：\n\n"
+            f"{P_PHYSICS_INVARIANT}\n\n"
+            "评分规则（feasibility_score）：\n"
+            "  -5: 严重违反物理定律（如无中生有、永动机、跨代科技）\n"
+            "  -3: 存在明显的能级或因果断裂\n"
+            "   0: 存疑，无法确认也无法否定\n"
+            "  +3: 基本可行，但存在小瑕疵\n"
+            "  +5: 完全符合已知物理化学规律与科技树因果链\n\n"
+            "你必须列出所有发现的反例（counterexamples），即使最终打分为正。\n"
+            "conservation_check, energy_check, causal_check 均为布尔值严格校验。\n"
         )
 
-        if not verdict_obj:
-            print(f"[拉普拉斯妖] 💥 强类型校验及自纠错均失败，强制回退。")
+        user_message = (
+            f"## 原始提案\n{proposal_content}\n\n"
+            f"## 当前已解锁技术\n{current_tech_level}\n\n"
+            f"## Generator 假说输出\n{hypothesis_json}\n"
+        )
+
+        result = await gateway.generate_structured(
+            system_prompt=system_prompt,
+            user_prompt=user_message,
+            response_model=CriticOutput,
+            temperature=0.0,
+        )
+        return result
+
+    # ─────────────────────────────────────────
+    # Stage 3: Meta-Arbiter (Final Verdict)
+    # ─────────────────────────────────────────
+    def _arbitrate(
+        self,
+        hypothesis: HypothesisOutput,
+        critique: CriticOutput,
+    ) -> LaplaceVerdict:
+        """
+        Metacognitive arbitration: combines Critic scores with hard causal gates.
+
+        Decision logic (deterministic, no LLM call needed):
+          1. If any hard check fails -> force SUPERSTITION downgrade.
+          2. If feasibility_score < ACCEPT_THRESHOLD -> force SUPERSTITION.
+          3. Otherwise -> accept Generator's verdict and recipe.
+        """
+
+        # ── Hard Causal Gate (P_Physics enforcement) ──
+        hard_checks_passed = all([
+            critique.conservation_check,
+            critique.energy_check,
+            critique.causal_check,
+        ])
+
+        score = critique.feasibility_score
+
+        # If hypothesis is PHYSICS, apply strict gating
+        if hypothesis.verdict_hypothesis == "PHYSICS":
+            if not hard_checks_passed or score < self.ACCEPT_THRESHOLD:
+                # Force downgrade to SUPERSTITION
+                failed_checks = []
+                if not critique.conservation_check:
+                    failed_checks.append("质量守恒违反")
+                if not critique.energy_check:
+                    failed_checks.append("能级约束违反")
+                if not critique.causal_check:
+                    failed_checks.append("科技树因果锁违反")
+
+                reason_parts = []
+                if failed_checks:
+                    reason_parts.append(f"硬公理校验失败: {', '.join(failed_checks)}")
+                if score < self.ACCEPT_THRESHOLD:
+                    reason_parts.append(f"Critic 评分 {score}/5 低于阈值 {self.ACCEPT_THRESHOLD}")
+                if critique.counterexamples:
+                    reason_parts.append(f"反例: {critique.counterexamples[0]}")
+
+                return LaplaceVerdict(
+                    verdict="SUPERSTITION",
+                    reasoning="; ".join(reason_parts) or "物理证伪未通过",
+                    eval_goal=hypothesis.eval_goal,
+                    eval_believability=max(0, hypothesis.eval_believability - 3),
+                    eval_secret=hypothesis.eval_secret,
+                    feasibility_score=score,
+                    meme=Meme(
+                        content=hypothesis.reasoning_chain[:200],
+                        category="superstition",
+                        penalty_description="被宇宙物理法则驳回的伪科学",
+                    ),
+                )
+
+            # All checks passed -> accept PHYSICS verdict with recipe
+            return LaplaceVerdict(
+                verdict="PHYSICS",
+                reasoning=f"三权分立仲裁通过 (Score={score}/5): {critique.critique_summary}",
+                eval_goal=hypothesis.eval_goal,
+                eval_believability=hypothesis.eval_believability,
+                eval_secret=hypothesis.eval_secret,
+                feasibility_score=score,
+                recipe=hypothesis.recipe,
+            )
+
+        # For SOCIAL / SUPERSTITION hypotheses, pass through directly
+        return LaplaceVerdict(
+            verdict=hypothesis.verdict_hypothesis,
+            reasoning=hypothesis.reasoning_chain[:200],
+            eval_goal=hypothesis.eval_goal,
+            eval_believability=hypothesis.eval_believability,
+            eval_secret=hypothesis.eval_secret,
+            feasibility_score=score,
+            meme=hypothesis.meme or Meme(
+                content=hypothesis.reasoning_chain[:200],
+                category="superstition",
+                penalty_description="社会学现象或迷信仪式",
+            ),
+        )
+
+    # ─────────────────────────────────────────
+    # Public API: Full Pipeline
+    # ─────────────────────────────────────────
+    async def judge(
+        self,
+        proposal_content: str,
+        current_tech_level: list[str],
+    ) -> LaplaceVerdict:
+        """
+        Execute the full GWT-Gated arbitration pipeline:
+          Generator(T=0.6) → Critic(T=0.0) → Meta-Arbiter(deterministic)
+        """
+
+        # Stage 1: Generate hypothesis
+        hypothesis = await self._generate_hypothesis(proposal_content, current_tech_level)
+        if hypothesis is None:
+            print("[Oracle] Stage 1 (Generator) failed. Forcing SUPERSTITION fallback.")
             return self._default_superstition(proposal_content)
 
-        return verdict_obj
+        # Short-circuit: non-PHYSICS hypotheses skip Critic
+        if hypothesis.verdict_hypothesis != "PHYSICS":
+            return LaplaceVerdict(
+                verdict=hypothesis.verdict_hypothesis,
+                reasoning=hypothesis.reasoning_chain[:200],
+                eval_goal=hypothesis.eval_goal,
+                eval_believability=hypothesis.eval_believability,
+                eval_secret=hypothesis.eval_secret,
+                feasibility_score=0,
+                meme=hypothesis.meme or Meme(
+                    content=hypothesis.reasoning_chain[:200],
+                    category="superstition",
+                    penalty_description="社会学现象或迷信仪式",
+                ),
+            )
 
+        # Stage 2: Adversarial critique
+        critique = await self._critique_hypothesis(
+            proposal_content, hypothesis, current_tech_level
+        )
+        if critique is None:
+            print("[Oracle] Stage 2 (Critic) failed. Forcing SUPERSTITION fallback.")
+            return self._default_superstition(proposal_content)
+
+        # Stage 3: Meta-Arbiter (deterministic, no LLM call)
+        verdict = self._arbitrate(hypothesis, critique)
+        return verdict
+
+    # ─────────────────────────────────────────
+    # Fallback
+    # ─────────────────────────────────────────
     @staticmethod
     def _default_superstition(proposal_content: str) -> LaplaceVerdict:
-        """类型熔断后的降级回退机制，确保主引擎绝对不会 Crashed"""
+        """Type fuse fallback: ensures main engine never crashes."""
         return LaplaceVerdict(
             verdict="SUPERSTITION",
             reasoning="系统校验失败，行为被物理引擎降级为不可知的迷信仪式。",
             eval_goal=0,
             eval_believability=0,
             eval_secret=-10,
+            feasibility_score=-5,
             meme=Meme(
-                content=proposal_content,
+                content=proposal_content[:200],
                 category="superstition",
-                penalty_description="被宇宙规则抹杀的风险"
-            )
+                penalty_description="被宇宙规则抹杀的风险",
+            ),
         )
 
-# ======================================================================
-# 测试入口
-# ======================================================================
+
+# ============================================================
+# Test Harness
+# ============================================================
 if __name__ == '__main__':
     import asyncio
 
     async def _test():
         oracle = LaplaceOracle()
 
-        print("=== 测试 1: 制作石矛 (测试物理逻辑与高评级) ===")
+        print("=== Test 1: Craft Stone Spear (should PASS) ===")
         result1 = await oracle.judge(
-            "为了防止别人抢走我的食物，我背着所有人，用藤蔓把一块锋利的石头悄悄绑在一根木棍上，制成一把石矛。",
-            current_tech_level=["STONE_TOOL"],
+            "用藤蔓把一块锋利的石头绑在木棍上，制成一把石矛。",
+            current_tech_level=["STONE_TOOL", "FIRE_CONTROL"],
         )
-        print(f"裁决: {result1.verdict} | 原因: {result1.reasoning}")
-        print(f"得分 -> Goal: {result1.eval_goal}, 可信度: {result1.eval_believability}, 守密: {result1.eval_secret}")
+        print(f"Verdict: {result1.verdict} | Score: {result1.feasibility_score}")
+        print(f"Reasoning: {result1.reasoning}")
         if result1.recipe:
-            print(f"配方产出: {result1.recipe.name}")
+            print(f"Recipe: {result1.recipe.name} | {result1.recipe.inputs} → {result1.recipe.outputs}")
+
+        print("\n=== Test 2: Smelt Iron Without Metallurgy (should REJECT) ===")
+        result2 = await oracle.judge(
+            "把河边的石头放进篝火里烧，提取铁矿并锻造铁剑。",
+            current_tech_level=["STONE_TOOL", "FIRE_CONTROL"],
+        )
+        print(f"Verdict: {result2.verdict} | Score: {result2.feasibility_score}")
+        print(f"Reasoning: {result2.reasoning}")
+
+        print("\n=== Test 3: Rain Dance (should be SUPERSTITION) ===")
+        result3 = await oracle.judge(
+            "围着篝火跳舞祈求下雨，相信火神会降下甘霖。",
+            current_tech_level=["STONE_TOOL", "FIRE_CONTROL"],
+        )
+        print(f"Verdict: {result3.verdict} | Score: {result3.feasibility_score}")
+        print(f"Reasoning: {result3.reasoning}")
 
     asyncio.run(_test())
