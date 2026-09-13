@@ -71,6 +71,7 @@ async def settle_all_intents(
                 "agents_known": list(world_agents.keys()),
                 "agents_dead": [a.name for a in world_agents.values() if a.is_dead],
                 "known_items": list(getattr(physics, "material_properties", {}).keys()),
+                "room_items": list(current_node.inventory.keys()),
             },
         )
         if not check_res.should_proceed:

@@ -288,7 +288,13 @@ class AgentThinkNode(DAGNode):
             agent.pending_events.clear()
 
             # 使用分层记忆管理器组装上下文 (L0 不变本体 + L1 双层工作记忆 + L2 检索)
-            memory_context = sim.memory_manager.assemble_prompt_context(name)
+            obs_text = f"在{sim.community_term}的 {current_room}，当前体能精力为 {agent.hunger}/30。"
+            memory_context = sim.memory_manager.assemble_prompt_context(
+                agent_id=name,
+                current_situation=obs_text,
+                current_tick=sim.tick_count,
+                current_location=current_room,
+            )
 
             perception = sim.environment.perceive(name)
             meme_context = sim.meme_pool.get_prompt_injection(community_term=sim.community_term)

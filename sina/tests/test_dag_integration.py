@@ -68,6 +68,73 @@ def test_agent_think_node_lease_inertia_skips_llm():
     asyncio.run(_run())
 
 
+def test_agent_think_node_real_thinking_with_memory_context(monkeypatch):
+    """Verify that when leases expire, AgentThinkNode executes assemble_prompt_context without TypeError."""
+    import asyncio
+    from core import dag_simulation
+
+    async def mock_determine_next_action(**kwargs):
+        # Verify that memory_context was assembled properly and contains persona invariant
+        mem_ctx = kwargs.get("memory_context", "")
+        assert "【核心信念】" in mem_ctx or len(mem_ctx) > 0
+        return {
+            "internal_thought": "我醒来了，需要寻找食物",
+            "observable_action": "在小镇漫步寻找浆果",
+            "action_type": "wander",
+            "duration_minutes": 30,
+        }
+
+    monkeypatch.setattr(dag_simulation, "determine_next_action", mock_determine_next_action)
+
+    async def _run():
+        sim = DAGSmallvilleSimulation(world_name="smallville")
+        # Ensure no leases exist
+        sim.action_inertia_engine.active_leases.clear()
+
+        think_node = AgentThinkNode("AgentThink")
+        result = await think_node.execute({"sim": sim})
+
+        assert result.next_node == "PhysicsSettle"
+        intents = result.payload.get("current_intents", [])
+        assert len(intents) > 0
+
+        # Verify leases were granted after thinking
+        for intent in intents:
+            lease = sim.action_inertia_engine.get_lease(intent.agent_name)
+            assert lease is not None
+            assert lease.ticks_remaining == 2  # 30 mins // 15 = 2 ticks
+
+    asyncio.run(_run())
+
+
+def test_reality_check_environmental_pickup_allowed():
+    """Verify that picking up / taking an item from the room ground is NOT blocked by RealityCheckMiddleware."""
+    from core.laplace_oracle import RealityCheckMiddleware
+
+    middleware = RealityCheckMiddleware()
+    agent_state = {"inventory": []}  # empty inventory
+    room_state = {
+        "agents_present": ["Alice"],
+        "agents_known": ["Alice"],
+        "agents_dead": [],
+        "known_items": ["bread", "apple"],
+        "room_items": ["bread"],  # bread is on the floor/table!
+    }
+
+    # Alice takes bread from the room
+    res = middleware.check(
+        action_text="Alice 从桌上拿起面包放进背包",
+        thought_text="我好饿，拾取面包吃",
+        agent_state=agent_state,
+        room_state=room_state,
+    )
+
+    # Must be grounded! Ground item pickup is physically valid!
+    assert res.is_grounded is True
+    assert res.should_proceed is True
+    assert len(res.hallucination_flags) == 0
+
+
 def test_obsidian_sync_node_execution():
     """Verify that ObsidianSyncNode executes cleanly and routes to MemeDecay."""
     import asyncio

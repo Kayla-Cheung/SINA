@@ -423,13 +423,24 @@ class RealityCheckMiddleware:
             if a in combined_text:
                 flags.append(f"Target is dead: {a}")
                 
-        # 3. Inventory items
+        # 3. Inventory & environmental item interaction
         inventory = [i.lower() for i in agent_state.get("inventory", [])]
         known_items = [i.lower() for i in room_state.get("known_items", [])]
-        
+        room_items = [i.lower() for i in room_state.get("room_items", [])]
+
+        pickup_keywords = ["捡起", "拾取", "拿起", "采摘", "采集", "搜寻", "从地上", "从桌上", "pick", "take", "gather", "forage", "grab", "collect"]
+        is_acquisition = any(kw in combined_text for kw in pickup_keywords)
+
         for i in known_items:
-            if i in combined_text and i not in inventory:
-                flags.append(f"Claimed item not in inventory: {i}")
+            if i in combined_text:
+                if is_acquisition:
+                    # 拾取/采集行为：物品必须存在于房间地面或当前背包中
+                    if i not in room_items and i not in inventory:
+                        flags.append(f"Target item not found in room ground or inventory: {i}")
+                else:
+                    # 消费/消耗/赠送行为：物品必须存在于智能体背包中
+                    if i not in inventory:
+                        flags.append(f"Claimed item not in inventory: {i}")
 
         is_grounded = len(flags) == 0
         should_proceed = is_grounded
