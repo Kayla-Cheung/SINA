@@ -14,11 +14,12 @@ class AsyncLLMGateway:
     SINA V3 统一大模型网关
     负责：并发控制、指数退避重试、JSON 强制校验、错误降级
     """
-    def __init__(self):
+    def __init__(self, max_concurrency: int = 5):
         self.client = AsyncOpenAI(
             api_key=os.getenv("DEEPSEEK_API_KEY"),
             base_url="https://api.deepseek.com"
         )
+        self.semaphore = asyncio.Semaphore(int(os.getenv("MAX_LLM_CONCURRENCY", str(max_concurrency))))
     
     async def generate_structured(
         self, 
@@ -42,15 +43,16 @@ class AsyncLLMGateway:
                     f"Do not wrap the JSON in markdown code blocks, just return the raw JSON string."
                 )
                 
-                response = await self.client.chat.completions.create(
-                    model="deepseek-chat",
-                    messages=[
-                        {"role": "system", "content": sys_msg},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    temperature=temperature,
-                    response_format={"type": "json_object"}
-                )
+                async with self.semaphore:
+                    response = await self.client.chat.completions.create(
+                        model="deepseek-chat",
+                        messages=[
+                            {"role": "system", "content": sys_msg},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        temperature=temperature,
+                        response_format={"type": "json_object"}
+                    )
                 
                 raw_content = response.choices[0].message.content.strip()
                 
@@ -94,14 +96,15 @@ class AsyncLLMGateway:
         """
         for attempt in range(max_retries):
             try:
-                response = await self.client.chat.completions.create(
-                    model="deepseek-chat",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    temperature=temperature
-                )
+                async with self.semaphore:
+                    response = await self.client.chat.completions.create(
+                        model="deepseek-chat",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        temperature=temperature
+                    )
                 return response.choices[0].message.content.strip()
             except Exception as e:
                 print(f"[Gateway] Text Generation Attempt {attempt+1}/{max_retries} Failed: {e}")
