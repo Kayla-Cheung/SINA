@@ -21,31 +21,33 @@ class AgentState:
         traits: str = "普通原始人",
         intentions: list = None,
         start_time: datetime = None,
+        hunger: int = 30,
+        inventory: dict = None,
     ):
         # ── 身份与性格 ──
         self.name: str = name
-        self.traits: str = traits          
-        self.intentions: list = intentions if intentions is not None else [] 
+        self.traits: str = traits
+        self.intentions: list = intentions if intentions is not None else []
 
         # ── 行动状态 ──
         self.current_action: str = "发呆中"
         self.action_end_time: datetime = start_time or datetime.now()
 
         # ── 感知与记忆 ──
-        self.known_nearby: set = set()       
-        self.memory_stream: list = []        
-        self.pending_events: list = []       
+        self.known_nearby: set = set()
+        self.memory_stream: list = []
+        self.pending_events: list = []
 
         # ── 反思机制 ──
-        self.importance_accumulator: int = 0  
+        self.importance_accumulator: int = 0
 
         # ── 生存指标 ──
-        self.hunger: int = 30             
-        self.inventory: dict = {}         
+        self.hunger: int = hunger
+        self.inventory: dict = inventory if inventory is not None else {}
 
         # ── 生死状态 ──
-        self.is_dead: bool = False          
-        self.is_comatose: bool = False      
+        self.is_dead: bool = False
+        self.is_comatose: bool = False
 
     def to_dict(self) -> dict:
         """将智能体状态序列化为可 JSON 化的字典。"""
@@ -83,9 +85,9 @@ class AgentState:
         agent.memory_stream = data.get("memory_stream", [])
         agent.pending_events = data.get("pending_events", [])
         agent.importance_accumulator = data.get("importance_accumulator", 0)
-        
+
         agent.hunger = data.get("hunger", 30)
-        
+
         agent.inventory = data.get("inventory", {})
         agent.is_dead = data.get("is_dead", False)
         agent.is_comatose = data.get("is_comatose", False)

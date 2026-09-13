@@ -8,7 +8,7 @@ into structured Layer 2 episodic vectors while preserving active sliding windows
 
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional, Callable, Dict, Any
+from typing import List, Optional, Callable
 
 from .types import (
     WorkingMemoryItem,
@@ -84,7 +84,7 @@ class BifurcationManager:
 
         # Distill stale items into a structured episode
         episodic_entry = self._distill_slice(stale_slice)
-        
+
         # Sinks to Layer 2 vector store
         self.vector_store.add(episodic_entry)
 
@@ -94,7 +94,7 @@ class BifurcationManager:
         """Distill raw working items into a unified episodic memory entry."""
         tick_start = items[0].tick
         tick_end = items[-1].tick
-        
+
         # Determine dominant location and involved agents
         locations = [it.location for it in items if it.location != "unknown"]
         dominant_location = locations[-1] if locations else "Main_Venue"

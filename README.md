@@ -69,7 +69,7 @@ graph TD
 
 ### 2. DAG Concurrency & Physical Settlement (`core/`)
 * **Parallel Intention Generation**: Agents evaluate environmental stimuli asynchronously via `AgentThinkNode`.
-* **Deterministic Physics Settlement**: Physical conflicts (e.g., competing for limited food or attacking) pass through `concurrency_lock.py` and `settlement_engine.py`, enforcing physical laws that subjective beliefs cannot override.
+* **Deterministic Physics Settlement**: Physical conflicts and interactions pass through `RealityCheckMiddleware` and `settlement_engine.py`, enforcing immutable physical laws and preventing cognitive hallucinations from mutating world state.
 
 ### 3. Spatial Topology & Dual Observer Visualizers
 * **Obsidian-Native Force-Directed Star Map (`sina.observer`)**: Transforms live simulation states into interconnected Markdown notes with bidirectional `[[wikilinks]]`, YAML metadata, and 2D `.canvas` topologies. Open `obsidian_vault/` in Obsidian (`Ctrl + G`) to inspect social light-cones and memory graphs via native GPU-accelerated force physics.

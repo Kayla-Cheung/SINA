@@ -1,5 +1,4 @@
-import asyncio
-from typing import Dict, Any, Callable, Awaitable, List, Optional
+from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
 
 @dataclass
@@ -25,34 +24,34 @@ class DAGEngine:
     def __init__(self):
         self.nodes: Dict[str, DAGNode] = {}
         self.global_state: Dict[str, Any] = {}
-        
+
     def register_node(self, node: DAGNode):
         self.nodes[node.name] = node
-        
+
     async def run(self, start_node: str, initial_state: Dict[str, Any] = None):
         if initial_state:
             self.global_state.update(initial_state)
-            
+
         current_node_name = start_node
-        
+
         while current_node_name:
             if current_node_name not in self.nodes:
                 raise ValueError(f"Fatal: Node '{current_node_name}' not found in DAG.")
-                
+
             node = self.nodes[current_node_name]
-            
+
             try:
                 result = await node.execute(self.global_state)
-                
+
                 if result.payload:
                     self.global_state.update(result.payload)
-                    
+
                 current_node_name = result.next_node
-                
+
             except Exception as e:
                 print(f"[Engine] Fatal Error in {current_node_name}: {e}")
                 import traceback
                 traceback.print_exc()
                 break
-                
+
         return self.global_state

@@ -37,7 +37,7 @@ class ActionIntent:
     """
     封装单个智能体在一个 tick 内的行动意图，内置了基于 Pydantic Schema 的强类型约束。
     """
-    
+
     # ── 行动类型 → 结算优先级（数字越小越优先） ──
     _PRIORITY_MAP = {
         "attack_target": 0,   # 攻击：最高优先，先手决定生死
@@ -116,7 +116,7 @@ class ActionIntent:
     @property
     def produce_item_tag(self) -> str | None:
         return self.raw_action.get("produce_item_tag")
-        
+
     @property
     def search_memory(self) -> str | None:
         return self.raw_action.get("search_memory")

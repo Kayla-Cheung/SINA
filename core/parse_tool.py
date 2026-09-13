@@ -3,7 +3,7 @@ Shared tool-call parsing for the God Agent (walk / chat / interact only).
 """
 import re
 import json
-from typing import Optional, Dict, Any
+from typing import Optional
 from .models import ToolCall
 from pydantic import BaseModel, ValidationError
 
@@ -25,13 +25,13 @@ def parse_tool_call_from_dict(data: dict) -> Optional[ToolCall]:
     try:
         if not isinstance(data, dict):
             return None
-            
+
         tool = data.get("tool")
         args = data.get("args")
-        
+
         if not tool or not isinstance(args, dict):
             return None
-            
+
         if tool == "walk":
             WalkArgs(**args)
         elif tool == "chat":
@@ -40,7 +40,7 @@ def parse_tool_call_from_dict(data: dict) -> Optional[ToolCall]:
             InteractArgs(**args)
         else:
             return None
-            
+
         return ToolCall(**data)
     except (ValidationError, Exception):
         return None

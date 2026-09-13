@@ -2,12 +2,12 @@
 God Agent — maps free-form character intentions to world actions (or idle/reject).
 """
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Literal
+from typing import Any, Dict, Optional, Literal
 
 from pydantic import BaseModel, Field
 
 from .models import AgentState, ToolCall
-from .parse_tool import parse_tool_call, parse_tool_call_from_dict
+from .parse_tool import parse_tool_call_from_dict
 
 try:
     from .gateway import gateway
@@ -126,7 +126,7 @@ Decide: 'action', 'idle', or 'reject'."""
 
         # Build raw string representation
         raw_resp = output.model_dump_json() if hasattr(output, 'model_dump_json') else output.json()
-        
+
         parsed_tool = None
         if output.kind == "action" and output.tool:
             # We enforce Pydantic dict representation

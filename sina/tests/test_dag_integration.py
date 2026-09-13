@@ -5,7 +5,6 @@ and ObsidianSyncNode are active and cooperatively executing in the DAG pipeline.
 """
 
 import os
-import pytest
 
 os.environ.setdefault("DEEPSEEK_API_KEY", "sk-test-placeholder")
 os.environ.setdefault("OPENAI_API_KEY", "sk-test-placeholder")
@@ -13,13 +12,9 @@ os.environ.setdefault("OPENAI_API_KEY", "sk-test-placeholder")
 from core.dag_simulation import (
     DAGSmallvilleSimulation,
     AgentThinkNode,
-    PhysicsSettleNode,
     OracleJudgeNode,
     ObsidianSyncNode,
 )
-from core.action_intent import ActionIntent
-from core.action_lease import ActionLease
-from sina.memory.types import MemoryType
 
 
 def test_dag_simulation_initialization():
@@ -156,7 +151,6 @@ def test_proposal_voting_window_retention_and_expiration():
     """Verify that a proposal remains active across ticks until expire_tick, then adjudicates."""
     import asyncio
     from core.action_intent import Proposal
-    from core.dag_simulation import OracleJudgeNode
 
     async def _run():
         sim = DAGSmallvilleSimulation(world_name="smallville")

@@ -2,7 +2,7 @@ from enum import Enum, auto
 from typing import Callable, Dict, Any, Awaitable
 import asyncio
 
-class AgentState(Enum):
+class AgentLifecycleState(Enum):
     """定义智能体在 DAG 图中的绝对节点"""
     IDLE = auto()               # 空闲等待
     PERCEIVE = auto()           # 感知环境 (读取 Memory)
@@ -12,7 +12,7 @@ class AgentState(Enum):
 
 class FSMNode:
     """DAG 的基本单元：一个状态节点"""
-    def __init__(self, name: AgentState, action: Callable[[Dict[str, Any]], Awaitable[AgentState]]):
+    def __init__(self, name: AgentLifecycleState, action: Callable[[Dict[str, Any]], Awaitable[AgentLifecycleState]]):
         self.name = name
         self.action = action  # 核心：必须返回下一个要流向的状态
 
@@ -24,8 +24,8 @@ class AgentFSM:
     def __init__(self, agent_name: str):
         self.agent_name = agent_name
         self.context: Dict[str, Any] = {}
-        self.current_state = AgentState.IDLE
-        self.nodes: Dict[AgentState, FSMNode] = {}
+        self.current_state = AgentLifecycleState.IDLE
+        self.nodes: Dict[AgentLifecycleState, FSMNode] = {}
 
     def register_node(self, node: FSMNode):
         self.nodes[node.name] = node
@@ -40,11 +40,11 @@ class AgentFSM:
             return
 
         print(f"\n[{self.agent_name}] 🟢 进入节点: {self.current_state.name}")
-        
+
         # 执行当前节点的核心逻辑，拿到下一个要去的状态
         node = self.nodes[self.current_state]
         next_state = await node.action(self.context)
-        
+
         print(f"[{self.agent_name}] ➡️ 状态流转: {self.current_state.name} -> {next_state.name}")
         self.current_state = next_state
 
@@ -52,38 +52,38 @@ class AgentFSM:
 # ==========================================
 # 实战演示：如何把 SINA 智能体塞进状态机
 # ==========================================
-async def node_perceive(context: dict) -> AgentState:
+async def node_perceive(context: dict) -> AgentLifecycleState:
     print("  [Perceive] 正在读取周围环境...")
     await asyncio.sleep(0.5) # 模拟读库
     context['perceived_danger'] = False
-    return AgentState.THINK
+    return AgentLifecycleState.THINK
 
-async def node_think(context: dict) -> AgentState:
+async def node_think(context: dict) -> AgentLifecycleState:
     print("  [Think] 正在调用 AsyncLLMGateway 思考...")
     await asyncio.sleep(0.5)
     # 大模型决定是否要发起提案
-    wants_to_propose = True 
+    wants_to_propose = True
     if wants_to_propose:
         print("  [Think] 大模型决定发起一条规则提案！")
-        return AgentState.WAIT_FOR_VOTE
+        return AgentLifecycleState.WAIT_FOR_VOTE
     else:
-        return AgentState.ACT
+        return AgentLifecycleState.ACT
 
-async def node_wait(context: dict) -> AgentState:
+async def node_wait(context: dict) -> AgentLifecycleState:
     print("  [Wait] 进入挂起状态。在其他人投票完成前，我什么也做不了。")
-    return AgentState.IDLE
+    return AgentLifecycleState.IDLE
 
 async def main():
     agent = AgentFSM("Kayla_NPC")
-    
+
     # 1. 注册图节点
-    agent.register_node(FSMNode(AgentState.PERCEIVE, node_perceive))
-    agent.register_node(FSMNode(AgentState.THINK, node_think))
-    agent.register_node(FSMNode(AgentState.WAIT_FOR_VOTE, node_wait))
-    
+    agent.register_node(FSMNode(AgentLifecycleState.PERCEIVE, node_perceive))
+    agent.register_node(FSMNode(AgentLifecycleState.THINK, node_think))
+    agent.register_node(FSMNode(AgentLifecycleState.WAIT_FOR_VOTE, node_wait))
+
     # 2. 强行拉起状态机
-    agent.current_state = AgentState.PERCEIVE
-    
+    agent.current_state = AgentLifecycleState.PERCEIVE
+
     # 模拟世界运行 3 个 Tick
     for _ in range(3):
         await agent.tick()

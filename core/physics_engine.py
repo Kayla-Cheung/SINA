@@ -19,7 +19,6 @@ SINA v4 双层架构 · 前文明多智能体仿真
 """
 
 import random
-from copy import deepcopy
 
 
 class Recipe:
@@ -78,10 +77,11 @@ class PhysicsEngine:
     """
 
     def __init__(self, world_name: str = "smallville"):
-        import os, json
+        import os
+        import json
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         physics_path = os.path.join(base_dir, "worlds", world_name, "config", "physics.json")
-        
+
         DEFAULT_MATERIALS = {
             "BERRY": {"nutrition": 3, "disease_chance": 0.0, "spoil_rate": 0.1},
             "MEAT": {"nutrition": 5, "disease_chance": 0.4, "spoil_rate": 0.3},

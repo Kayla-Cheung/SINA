@@ -6,8 +6,6 @@ Layer 2 Vector Search, and Class-Gated Sociological Decay.
 
 import os
 import tempfile
-import pytest
-import numpy as np
 
 from sina.memory.types import (
     MemoryType,
@@ -142,7 +140,7 @@ def test_class_gated_decay_and_confabulation():
     decay_engine = ClassGatedDecayEngine(base_half_life_ticks=50.0)
 
     # Rich / High-Class Agent
-    p_rich = PersonaInvariant(
+    _p_rich = PersonaInvariant(
         agent_id="agent_rich",
         name="贾母",
         archetype="Matriarch",

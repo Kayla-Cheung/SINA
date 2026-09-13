@@ -13,7 +13,6 @@ os.environ.setdefault("OPENAI_API_KEY", "sk-test-placeholder")
 
 from core.laplace_oracle import (
     LaplaceOracle,
-    LaplaceVerdict,
     HypothesisOutput,
     CriticOutput,
     Recipe,

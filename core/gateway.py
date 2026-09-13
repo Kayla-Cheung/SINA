@@ -1,7 +1,7 @@
 import os
 import asyncio
 import json
-from typing import Optional, Any, Type, Dict
+from typing import Optional, Any, Type
 from pydantic import BaseModel, ValidationError
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
@@ -14,17 +14,18 @@ class AsyncLLMGateway:
     SINA V3 统一大模型网关
     负责：并发控制、指数退避重试、JSON 强制校验、错误降级
     """
-    def __init__(self, max_concurrency: int = 5):
+    def __init__(self, max_concurrency: int = 5, api_key: Optional[str] = None):
+        key = api_key or os.getenv("DEEPSEEK_API_KEY") or "sk-placeholder"
         self.client = AsyncOpenAI(
-            api_key=os.getenv("DEEPSEEK_API_KEY"),
+            api_key=key,
             base_url="https://api.deepseek.com"
         )
         self.semaphore = asyncio.Semaphore(int(os.getenv("MAX_LLM_CONCURRENCY", str(max_concurrency))))
-    
+
     async def generate_structured(
-        self, 
-        system_prompt: str, 
-        user_prompt: str, 
+        self,
+        system_prompt: str,
+        user_prompt: str,
         response_model: Type[BaseModel],
         max_retries: int = 3,
         temperature: float = 0.3
@@ -36,13 +37,13 @@ class AsyncLLMGateway:
             try:
                 # 兼容 Pydantic V1 和 V2 的 schema 提取
                 schema_json = response_model.schema_json() if hasattr(response_model, 'schema_json') else json.dumps(response_model.model_json_schema())
-                
+
                 sys_msg = (
                     f"{system_prompt}\n\n"
                     f"CRITICAL: You MUST return ONLY valid JSON matching this schema:\n{schema_json}\n"
                     f"Do not wrap the JSON in markdown code blocks, just return the raw JSON string."
                 )
-                
+
                 async with self.semaphore:
                     response = await self.client.chat.completions.create(
                         model="deepseek-chat",
@@ -53,9 +54,9 @@ class AsyncLLMGateway:
                         temperature=temperature,
                         response_format={"type": "json_object"}
                     )
-                
+
                 raw_content = response.choices[0].message.content.strip()
-                
+
                 # 清理可能残留的 markdown 标记
                 if raw_content.startswith("```json"):
                     raw_content = raw_content[7:]
@@ -66,18 +67,18 @@ class AsyncLLMGateway:
                 # 尝试解析并验证
                 parsed_data = response_model.parse_raw(raw_content) if hasattr(response_model, 'parse_raw') else response_model.model_validate_json(raw_content)
                 return parsed_data
-                
+
             except (ValidationError, json.JSONDecodeError) as e:
                 print(f"[Gateway] Attempt {attempt+1}/{max_retries} JSON Validation Failed: {e}")
                 if attempt == max_retries - 1:
                     print(f"[Gateway] Max retries reached. Raw output: {raw_content}")
                     return None
-                
+
                 # 【核心修复】：闭环自纠错，将报错反馈给下一轮的 Prompt
                 user_prompt += f"\n\n[SYSTEM ERROR]: Previous attempt failed with:\n{str(e)}\nFix the JSON structure and try again."
-                
+
                 await asyncio.sleep(2 ** attempt) # 指数退避
-                
+
             except Exception as e:
                 print(f"[Gateway] Attempt {attempt+1}/{max_retries} API Request Failed: {e}")
                 if attempt == max_retries - 1:
@@ -110,7 +111,20 @@ class AsyncLLMGateway:
                 print(f"[Gateway] Text Generation Attempt {attempt+1}/{max_retries} Failed: {e}")
                 if attempt == max_retries - 1:
                     return ""
-                await asyncio.sleep(2 ** attempt)
+        return ""
 
-# 暴露单例供全局调用
-gateway = AsyncLLMGateway()
+_gateway_instance: Optional[AsyncLLMGateway] = None
+
+def get_gateway() -> AsyncLLMGateway:
+    """获取 AsyncLLMGateway 懒加载单例，消除模块导入时的顶层副作用。"""
+    global _gateway_instance
+    if _gateway_instance is None:
+        _gateway_instance = AsyncLLMGateway()
+    return _gateway_instance
+
+def __getattr__(name: str) -> Any:
+    """保持向后兼容：当外部直接 from core.gateway import gateway 时动态解析单例。"""
+    if name == "gateway":
+        return get_gateway()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+

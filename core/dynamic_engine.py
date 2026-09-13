@@ -7,9 +7,6 @@ dynamic_engine.py — SINA v4 动态决策引擎
   3. 调用 DeepSeek LLM 获取下一步行动（JSON 结构化输出）
 """
 
-import os
-import json
-import re
 from datetime import datetime
 try:
     from .agent_state import AgentState
@@ -45,20 +42,20 @@ async def store_observation(state: AgentState, text: str, sim_time: datetime):
     # 重要性累积超过阈值 → 触发反思
     if state.importance_accumulator > 15:
         recent_texts = state.memory_stream[-10:]
-        
+
         # 【因果锚定 (Causally Grounded)】
         # 检查最近的记忆中是否有实质性的物理世界反馈。如果没有，拒绝“空想反思”。
         has_physical_anchor = any(
-            "[物理现实]" in m["text"] or "[战斗]" in m["text"] or "[疾病]" in m["text"] 
+            "[物理现实]" in m["text"] or "[战斗]" in m["text"] or "[疾病]" in m["text"]
             for m in recent_texts
         )
-        
+
         if has_physical_anchor:
             insights = await generate_insights(recent_texts, count=2)
-            
+
             # 【遗忘法则】提炼出高级领悟后，立刻销毁作为原材料的底层碎片记忆
             del state.memory_stream[-10:]
-            
+
             import re
             for insight in insights:
                 insight_entry = {
@@ -69,7 +66,7 @@ async def store_observation(state: AgentState, text: str, sim_time: datetime):
                 state.memory_stream.append(insight_entry)
                 # 将领悟追加到 traits，影响后续决策人格
                 state.traits += f" [Deep Realization: {insight}]"
-                
+
             # 【人格浓缩法则 (Semantic Compression)】防止 traits 膨胀，使用 LLM 迭代升华人格
             base_traits = re.sub(r' \[Deep Realization: .*?\]', '', state.traits)
             realizations = re.findall(r' \[Deep Realization: .*?\]', state.traits)
@@ -91,7 +88,7 @@ async def store_observation(state: AgentState, text: str, sim_time: datetime):
                     state.traits = base_traits + "".join(realizations[-3:])
             else:
                 state.traits = base_traits + "".join(realizations)
-            
+
         # 无论是否生成领悟，阈值满后都重置累加器
         state.importance_accumulator = 0
 
@@ -133,7 +130,7 @@ async def determine_next_action(
     """
     time_str = current_time.strftime("%H:%M")
     is_night = not (6 <= current_time.hour < 18)
-    
+
     # 季节演算
     from datetime import datetime as dt
     start_time = dt(2026, 1, 1, 6, 0)
@@ -141,7 +138,7 @@ async def determine_next_action(
     season_idx = (ticks // 24) % 4
     season_names = ["春季(丰饶，遍地浆果)", "夏季(温暖，适宜囤粮)", "秋季(衰退，资源减产)", "凛冬(死亡，严寒且没有任何植物生长)"]
     current_season = season_names[season_idx]
-    
+
     period = "【夜晚—危险！】" if is_night else "【白天】"
     period += f" 🌍 当前季节: {current_season}"
 
@@ -154,18 +151,18 @@ async def determine_next_action(
     # ── 动态提取世界规则设定 ──
     if not world_prompt:
         world_prompt = {}
-    
+
     community_term = world_prompt.get("community_term", "群体")
-    
+
     identity_rules = world_prompt.get(
-        "identity_rules", 
+        "identity_rules",
         "你是「{agent_name}」。\n你的性格特征：{traits}\n你的意图：{intentions}"
     ).format(
         agent_name=state.name,
         traits=state.traits,
         intentions=', '.join(state.intentions) if state.intentions else '尚无明确意图'
     )
-    
+
     survival_rules = world_prompt.get("survival_rules", "")
     language_rules = world_prompt.get("language_rules", "")
     format_thought = world_prompt.get("format_thought", "你内心真实的想法")
@@ -186,7 +183,7 @@ async def determine_next_action(
 
 【硬性物理约束：交接物品】
 如果你在语言中承诺给予他人食物或任何物品，绝不能仅凭 chat 敷衍！你必须在 JSON 的 `give_item` 字段中明确填入要给的物品和对方名字，否则会被世界规则判定为诈骗并导致对方饿死！
-  
+
 现在是 {time_str} {period}
 
 ═══ 硬物理层（不可违反的自然法则）═══
@@ -252,17 +249,17 @@ async def determine_next_action(
 """
 
     from action_intent import ActionSchema
-    
+
     action_obj = await gateway.generate_structured(
         system_prompt=system_prompt,
         user_prompt="根据当前处境，决定你下一步的行动。",
         response_model=ActionSchema,
         temperature=0.75
     )
-    
+
     if action_obj:
         return action_obj.model_dump()
-    
+
     print(f"  ⚠ [{state.name}] Gateway 决策失败，触发安全兜底")
     return _fallback_action(state)
 

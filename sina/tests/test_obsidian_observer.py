@@ -7,14 +7,13 @@ and memory synchronization.
 import os
 import tempfile
 import json
-import pytest
 
 from core.environment import SandboxEnvironment
 from core.agent_state import AgentState
 from core.physics_engine import PhysicsEngine
 from sina.observer.obsidian_vault import ObsidianVaultObserver
 from sina.memory.manager import HierarchicalMemoryManager
-from sina.memory.types import PersonaInvariant, MemoryType
+from sina.memory.types import PersonaInvariant
 
 
 class MockSim:
@@ -31,7 +30,7 @@ class MockSim:
         }
         self.world_agents["Agent_Alice"].inventory = {"TORCH": 1, "MEAT": 2}
         self.world_agents["Agent_Bob"].inventory = {"STONE": 3}
-        
+
         # Spawn in rooms
         nodes = self.environment.all_nodes()
         self.environment.spawn_agent("Agent_Alice", nodes[0])
@@ -42,7 +41,7 @@ def test_obsidian_vault_sync_and_file_structure():
     with tempfile.TemporaryDirectory() as tmp_dir:
         observer = ObsidianVaultObserver(vault_dir=tmp_dir, macro_only=False)
         sim = MockSim()
-        
+
         memory_mgr = HierarchicalMemoryManager()
         p_alice = PersonaInvariant(
             agent_id="Agent_Alice",
@@ -100,7 +99,7 @@ def test_obsidian_vault_macro_only_mode():
     with tempfile.TemporaryDirectory() as tmp_dir:
         observer = ObsidianVaultObserver(vault_dir=tmp_dir, macro_only=True)
         sim = MockSim()
-        
+
         memory_mgr = HierarchicalMemoryManager()
         p_alice = PersonaInvariant(
             agent_id="Agent_Alice",

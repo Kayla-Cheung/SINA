@@ -166,7 +166,7 @@ class HierarchicalMemoryManager:
             top_k=top_k_episodes,
         )
         retrieved_episodes = self.retrieve_memories(query)
-        
+
         episodes_lines = []
         for res in retrieved_episodes:
             m = res.memory

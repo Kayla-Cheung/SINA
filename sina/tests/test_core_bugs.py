@@ -4,14 +4,11 @@ Covers Issues #12 (Combat Healing Inverse), #13 (Comatose Vote Deadlock),
 #14 (Vote String Mismatch), #15 (Inventory Spoilage Loophole), and #16 (Death Drop).
 """
 
-import pytest
-from datetime import datetime
 
-from core.action_intent import Proposal, ActionIntent
+from core.action_intent import Proposal
 from core.agent_state import AgentState
 from core.physics_engine import PhysicsEngine
-from core.environment import SandboxEnvironment, EnvNode
-from core.settlement_engine import settle_all_intents
+from core.environment import SandboxEnvironment
 
 
 def test_issue12_combat_loser_damage_subtraction():
@@ -34,7 +31,7 @@ def test_issue12_combat_loser_damage_subtraction():
 def test_issue13_comatose_vote_deadlock_elimination():
     """Verify comatose agents do not deadlock proposal voting."""
     p = Proposal("Alice", "建造火堆")
-    
+
     # 3 total agents: Alice (Alive), Bob (Alive), Charlie (Comatose)
     world_agents = {
         "Alice": AgentState("Alice"),

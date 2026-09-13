@@ -7,7 +7,7 @@ and are compelled to confabulate (hallucinate rationalized memories) under cogni
 
 import math
 import random
-from typing import List, Optional
+from typing import Optional
 import numpy as np
 
 from .types import (
@@ -111,7 +111,7 @@ class ClassGatedDecayEngine:
         when memory recall is insufficient and class index is low.
         """
         confab_id = f"confab_{persona.agent_id}_{query.current_tick}_{random.randint(1000, 9999)}"
-        
+
         # Archetype-conditioned rationalization templates
         if "Survivor" in persona.archetype or "Subordinate" in persona.archetype:
             summary = (
@@ -120,8 +120,8 @@ class ClassGatedDecayEngine:
             )
         elif "Rebel" in persona.archetype:
             summary = (
-                f"【潜意识执念】我依稀记得曾目睹过统治秩序背后的虚伪与脆弱，"
-                f"时刻提醒自己不可彻底信任体制。"
+                "【潜意识执念】我依稀记得曾目睹过统治秩序背后的虚伪与脆弱，"
+                "时刻提醒自己不可彻底信任体制。"
             )
         else:
             summary = (

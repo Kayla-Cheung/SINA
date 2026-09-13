@@ -17,9 +17,9 @@ from datetime import datetime, timedelta
 
 try:
     from .dag_engine import DAGEngine, DAGNode, NodeResult
-    from .action_lease import ActionInertiaEngine, ActionLease
+    from .action_lease import ActionInertiaEngine
     from .action_intent import ActionIntent
-    from .dynamic_engine import determine_next_action, store_observation
+    from .dynamic_engine import determine_next_action
     from .settlement_engine import settle_all_intents
     from .physics_engine import Recipe, PhysicsEngine
     from .meme_pool import Meme, MemePool
@@ -28,9 +28,9 @@ try:
     from .agent_state import AgentState
 except ImportError:
     from dag_engine import DAGEngine, DAGNode, NodeResult
-    from action_lease import ActionInertiaEngine, ActionLease
+    from action_lease import ActionInertiaEngine
     from action_intent import ActionIntent
-    from dynamic_engine import determine_next_action, store_observation
+    from dynamic_engine import determine_next_action
     from settlement_engine import settle_all_intents
     from physics_engine import Recipe, PhysicsEngine
     from meme_pool import Meme, MemePool
@@ -458,7 +458,7 @@ class OracleJudgeNode(DAGNode):
                     proposal.status = "rejected"
                     reject_msg = f"❌ 提案未达多数通过（赞成 {yes_count}/{total_voted}）: {proposal.content}"
                     print(f"\n  📋 Phase 3: {reject_msg}")
-                    for name, agent in sim.world_agents.items():
+                    for _name, agent in sim.world_agents.items():
                         if not agent.is_dead:
                             agent.pending_events.append(reject_msg)
 
@@ -499,7 +499,7 @@ class MemeDecayNode(DAGNode):
                 for meme in removed:
                     decay_msg = f"🧬 {sim.community_term}信念逐渐淡忘: {meme.content}"
                     print(f"    {decay_msg}")
-                    for name, agent in sim.world_agents.items():
+                    for _name, agent in sim.world_agents.items():
                         if not agent.is_dead:
                             agent.pending_events.append(decay_msg)
             else:

@@ -5,6 +5,10 @@ environment.py — SINA v4 前文明原始拓扑矩阵
 每个区域节点(EnvNode)持有自然资源、空间属性、以及驻留智能体。
 """
 
+import json
+import os
+
+
 class EnvNode:
     """环境节点：空间拓扑中的一个区域"""
 
@@ -12,10 +16,10 @@ class EnvNode:
         self.name = name
         self.parent = parent
         self.children: list['EnvNode'] = []
-        self.objects: list[str] = []        
-        self.agents: list[str] = []         
-        self.inventory: dict[str, int] = {} 
-        self.locked_by: str | None = None   
+        self.objects: list[str] = []
+        self.agents: list[str] = []
+        self.inventory: dict[str, int] = {}
+        self.locked_by: str | None = None
         self.description = description
 
     def add_child(self, child_node: 'EnvNode') -> 'EnvNode':
@@ -27,9 +31,6 @@ class EnvNode:
         return f"EnvNode('{self.name}', agents={self.agents}, inv={self.inventory})"
 
 
-import json
-import os
-
 class SandboxEnvironment:
     """
     沙盒环境：管理整个前文明的拓扑结构与资源。
@@ -37,11 +38,11 @@ class SandboxEnvironment:
     def __init__(self, world_name: str = "smallville"):
         self.root = EnvNode('World_Matrix')
         self.agent_locations: dict[str, EnvNode] = {}
-        
+
         # 动态加载地图 JSON
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         map_path = os.path.join(base_dir, "worlds", world_name, "config", "map.json")
-        
+
         if os.path.exists(map_path):
             with open(map_path, "r", encoding="utf-8") as f:
                 map_data = json.load(f)
@@ -57,7 +58,7 @@ class SandboxEnvironment:
             ))
             child_node.objects = child_data.get("objects", [])
             child_node.inventory = child_data.get("inventory", {})
-            
+
             if "children" in child_data:
                 self._build_tree(child_node, child_data["children"])
 
@@ -121,5 +122,6 @@ class SandboxEnvironment:
                 traverse_all(c)
         traverse_all(self.root)
         for n in nodes:
-            if n.name == name: return n
+            if n.name == name:
+                return n
         return None

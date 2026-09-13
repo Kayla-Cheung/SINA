@@ -8,7 +8,6 @@ force-directed graph visualization in Obsidian.
 import os
 import json
 from typing import Dict, List, Optional, Any
-from datetime import datetime
 
 
 class ObsidianVaultObserver:
@@ -99,7 +98,7 @@ class ObsidianVaultObserver:
 
         for node in all_nodes:
             file_path = os.path.join(self.rooms_dir, f"{node.name}.md")
-            
+
             # Find agents in this room
             agents_in_room = list(node.agents)
             agent_links = [f"- [[Agents/{a}]]" for a in agents_in_room]
@@ -195,7 +194,7 @@ class ObsidianVaultObserver:
 
             # Fallback to internal memory stream if manager not provided
             if not memory_links and agent.memory_stream:
-                for idx, m in enumerate(agent.memory_stream[-5:]):
+                for _, m in enumerate(agent.memory_stream[-5:]):
                     memory_links.append(f"- `[{m.get('time', '')}]` {m.get('text', '')[:60]}")
 
             memory_block = "\n".join(memory_links) if memory_links else "- *(暂无长期记忆)*"
@@ -341,12 +340,12 @@ class ObsidianVaultObserver:
         )
         if not os.path.exists(chronicle_path):
             header = (
-                f"---\n"
-                f"type: chronicle\n"
-                f"tags: [chronicle, live_stream]\n"
-                f"---\n\n"
-                f"# 📜 SINA 世界编年史流水线 (Live World Chronicle)\n\n"
-                f"> 此文件由仿真引擎实时追加，按时间轴追踪全员行为与历史大事件。\n\n---\n\n"
+                "---\n"
+                "type: chronicle\n"
+                "tags: [chronicle, live_stream]\n"
+                "---\n\n"
+                "# 📜 SINA 世界编年史流水线 (Live World Chronicle)\n\n"
+                "> 此文件由仿真引擎实时追加，按时间轴追踪全员行为与历史大事件。\n\n---\n\n"
             )
             with open(chronicle_path, "w", encoding="utf-8") as f:
                 f.write(header + chronicle_entry)
@@ -385,17 +384,17 @@ class ObsidianVaultObserver:
             f"| **空间节点数** | `{len(sim.environment.all_nodes())}` 个房间 |\n\n"
             f"## 👥 智能体花名册 (Roster)\n"
             + "\n".join(agent_links) + "\n\n"
-            f"## 🏛️ 空间拓扑 (Spatial Grid)\n"
+            "## 🏛️ 空间拓扑 (Spatial Grid)\n"
             + "\n".join(room_links) + "\n\n"
-            f"## 💡 Obsidian 星图操作指引 (Star Map Guide)\n"
-            f"1. **快捷键 `Ctrl + G` (或 `Cmd + G`)**：打开全局星图（Global Graph）；\n"
-            f"2. **颜色分组已就绪**：\n"
-            f"   - 🟢 **绿色**：`#agent` 智能体\n"
-            f"   - 🔵 **蓝色**：`#room` 空间节点\n"
-            f"   - 🟣 **紫色**：`#memory` 情景记忆\n"
-            f"   - 🔴 **红色**：`#event` 历史事件\n"
-            f"   - 🟡 **黄色**：`#item` 物质资源\n"
-            f"3. **局部心智透视**：点开任意 `Agents/xxx.md`，右侧开启 **Local Graph**，深度设为 `2`，实时透视其人际圈与记忆网络。\n"
+            "## 💡 Obsidian 星图操作指引 (Star Map Guide)\n"
+            "1. **快捷键 `Ctrl + G` (或 `Cmd + G`)**：打开全局星图（Global Graph）；\n"
+            "2. **颜色分组已就绪**：\n"
+            "   - 🟢 **绿色**：`#agent` 智能体\n"
+            "   - 🔵 **蓝色**：`#room` 空间节点\n"
+            "   - 🟣 **紫色**：`#memory` 情景记忆\n"
+            "   - 🔴 **红色**：`#event` 历史事件\n"
+            "   - 🟡 **黄色**：`#item` 物质资源\n"
+            "3. **局部心智透视**：点开任意 `Agents/xxx.md`，右侧开启 **Local Graph**，深度设为 `2`，实时透视其人际圈与记忆网络。\n"
         )
 
         self._write_if_changed(file_path, content)
@@ -443,7 +442,7 @@ class ObsidianVaultObserver:
             parent_key = room.parent.name if room.parent else "root"
             parent_groups.setdefault(parent_key, []).append(room)
 
-        for p_name, group in parent_groups.items():
+        for _p_name, group in parent_groups.items():
             for i in range(len(group) - 1):
                 r1 = group[i].name
                 r2 = group[i + 1].name

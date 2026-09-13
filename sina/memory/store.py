@@ -7,7 +7,7 @@ SQLite cold persistence and agent-scoped indexing.
 import json
 import sqlite3
 from datetime import datetime
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Optional, Tuple
 import numpy as np
 
 from .types import EpisodicMemory
@@ -70,7 +70,7 @@ class EpisodicVectorStore:
         """Add multiple memories in batch."""
         if vectors is None:
             vectors = [m.embedding or self._generate_fallback_vector(m.summary) for m in memories]
-        for mem, vec in zip(memories, vectors):
+        for mem, vec in zip(memories, vectors, strict=False):
             self.add(mem, vec)
 
     def search(
@@ -100,7 +100,7 @@ class EpisodicVectorStore:
                 return []
             sub_matrix = self._normalized_vectors[indices]
             sims = np.dot(sub_matrix, q_normed)
-            
+
             # Top-k selection
             sorted_local_indices = np.argsort(-sims)[:top_k]
             results = []
@@ -199,7 +199,7 @@ class EpisodicVectorStore:
         for row in rows:
             (mem_id, agent_id, t_start, t_end, ts_str, loc, inv_str, summary,
              imp, val, emb_str, is_conf) = row
-            
+
             try:
                 emb = json.loads(emb_str)
             except Exception:

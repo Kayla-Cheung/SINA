@@ -21,7 +21,6 @@ SINA v4 双层架构 · 前文明多智能体仿真
     🔧 technology_belief — 技术信念（「火能驱兽」在被 Oracle 确认前属于此类）
 """
 
-from copy import deepcopy
 
 
 class Meme:

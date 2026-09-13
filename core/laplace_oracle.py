@@ -12,7 +12,6 @@ First Principles:
        as an invariant anchor, preventing model drift and pseudoscience pollution.
 """
 
-import json
 from typing import Literal, Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 
@@ -408,21 +407,21 @@ class RealityCheckMiddleware:
     def check(self, action_text: str, thought_text: str, agent_state: dict, room_state: dict) -> RealityCheckResult:
         flags = []
         combined_text = (action_text + " " + thought_text).lower()
-        
+
         # 1. Target presence & location
         agents_present = [a.lower() for a in room_state.get("agents_present", [])]
         agents_known = [a.lower() for a in room_state.get("agents_known", [])]
-        
+
         for a in agents_known:
             if a in combined_text and a not in agents_present:
                 flags.append(f"Target not in same room: {a}")
-                
+
         # 2. Target status (alive/dead)
         agents_dead = [a.lower() for a in room_state.get("agents_dead", [])]
         for a in agents_dead:
             if a in combined_text:
                 flags.append(f"Target is dead: {a}")
-                
+
         # 3. Inventory & environmental item interaction
         inventory = [i.lower() for i in agent_state.get("inventory", [])]
         known_items = [i.lower() for i in room_state.get("known_items", [])]
@@ -444,7 +443,7 @@ class RealityCheckMiddleware:
 
         is_grounded = len(flags) == 0
         should_proceed = is_grounded
-        
+
         # Rectify action if not grounded
         if is_grounded:
             rectified_action = action_text

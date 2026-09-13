@@ -10,13 +10,9 @@ from datetime import datetime
 
 try:
     from .agent_state import AgentState
-    from .physics_engine import PhysicsEngine
-    from .environment import SandboxEnvironment
     from .laplace_oracle import RealityCheckMiddleware
 except ImportError:
     from agent_state import AgentState
-    from physics_engine import PhysicsEngine
-    from environment import SandboxEnvironment
     from laplace_oracle import RealityCheckMiddleware
 
 async def store_observation(agent: AgentState, text: str, clock: datetime):
@@ -99,11 +95,11 @@ async def settle_all_intents(
             if target_agent and not target_agent.is_dead:
                 combat_res = physics.resolve_combat(agent, target_agent)
                 winner = combat_res["winner"]
-                loser = combat_res["loser"]
+                _loser = combat_res["loser"]
                 loot = combat_res["loot_transferred"]
-                
+
                 target_agent.hunger = max(0, target_agent.hunger - combat_res["loser_hunger_penalty"])
-                
+
                 if winner == agent_name:
                     desc = f"你击败了 {target_name}，抢到了 {loot if loot else '空气'}。"
                     t_desc = f"【遭到攻击】你被 {agent_name} 击败，失去了 {loot if loot else '什么也没失去'}，且受了重伤（饥饿大降）！"
@@ -259,7 +255,7 @@ async def settle_all_intents(
                             f"【新提案提醒】{agent_name} 发起了提案：「{propose_bp}」，请在下一轮考虑投票！"
                         )
             else:
-                feedback_events.append(f"[提案冲突] 当前已有活跃提案正在审议中，无法重复发起。")
+                feedback_events.append("[提案冲突] 当前已有活跃提案正在审议中，无法重复发起。")
 
         vote_bp = action.get("vote_on_blueprint")
         if vote_bp and active_proposal is not None and active_proposal[0] is not None:
@@ -319,7 +315,7 @@ async def settle_all_intents(
         memory_text = f"行为: {observable}"
         if internal:
             memory_text += f" | 内心: {internal}"
-            
+
         if memory_manager is not None:
             try:
                 from sina.memory.types import MemoryType

@@ -44,7 +44,7 @@ class ActionLease(BaseModel):
     ticks_remaining: int = Field(default=1, ge=0, description="剩余有效 Tick 数")
     interruptible: bool = Field(default=True, description="是否允许被低优先级事件打断")
     payload: Dict[str, Any] = Field(default_factory=dict, description="执行上下文（如目标地点、材料）")
-    
+
     @property
     def is_active(self) -> bool:
         return self.ticks_remaining > 0
@@ -97,7 +97,7 @@ class ActionInertiaEngine:
         """为智能体颁发新的行动租约"""
         if duration_ticks is None:
             duration_ticks = self.DEFAULT_LEASE_DURATIONS.get(action_type.lower(), 1)
-        
+
         duration_ticks = max(1, duration_ticks)
         lease = ActionLease(
             action_type=action_type,
@@ -151,7 +151,7 @@ class ActionInertiaEngine:
     ) -> Tuple[bool, Optional[str], Optional[ActionLease]]:
         """
         评估智能体本帧是否需要唤醒 LLM：
-        
+
         Returns:
             (need_llm_think, wake_reason, active_lease)
             - need_llm_think: True 表示必须唤醒大模型思考，False 表示由租约惯性推进

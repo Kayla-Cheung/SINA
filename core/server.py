@@ -3,10 +3,8 @@ import asyncio
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
 import uvicorn
 from dag_simulation import DAGSmallvilleSimulation as SmallvilleSimulation
-from dag_engine import DAGEngine
 
 app = FastAPI(title="SINA Stage 4 Dashboard API")
 
@@ -126,12 +124,12 @@ sim_task = None
 async def simulation_loop():
 
     sim = SmallvilleSimulation("smallville")
-    
+
     agent_locations = {}
     for n in sim.environment.all_nodes():
         for agent_name in n.agents:
             agent_locations[agent_name] = n.name
-            
+
     def map_agent(a):
         return {
             "id": a.name,
@@ -158,19 +156,19 @@ async def simulation_loop():
         "logs": []
     }
 
-    
+
     # 【手动单步执行模式】
     global step_event
     step_event = asyncio.Event()
-    
+
     # 无限循环模拟引擎
     for tick in range(1, 100000):
         # 阻塞等待前端调用 /step 接口
         await step_event.wait()
         step_event.clear()
-        
+
         await sim.run_dag_loop(1)
-        
+
         # Extinction Event check
         all_comatose = len(sim.world_agents) > 0 and all(getattr(a, 'is_comatose', False) or getattr(a, 'is_dead', False) for a in sim.world_agents.values())
         if all_comatose:
@@ -178,19 +176,19 @@ async def simulation_loop():
             import subprocess
             subprocess.run(["python", "reset_memory.py"])
             sim = SmallvilleSimulation("smallville")
-            
+
         # Assemble state dump
         agent_locations = {}
         for n in sim.environment.all_nodes():
             for agent_name in n.agents:
                 agent_locations[agent_name] = n.name
-        
-        def map_agent(a):
+
+        def map_agent(a, locations=agent_locations):
             return {
                 "id": a.name,
                 "name": a.name,
                 "persona": a.traits,
-                "current_location": agent_locations.get(a.name, "Cafe"),
+                "current_location": locations.get(a.name, "Cafe"),
                 "inventory": list(a.inventory.keys()),
                 "status": a.current_action if a.current_action else "Idle",
                 "short_term_memory": [{"timestamp": getattr(m, "timestamp", "00:00"), "content": m.get("content", str(m)) if isinstance(m, dict) else getattr(m, "content", str(m)), "is_reflection": False, "frame": getattr(m, "frame", 0)} for m in a.memory_stream[-5:]],
@@ -215,22 +213,22 @@ async def simulation_loop():
         }
         last_state_dump = state_dump
         await manager.broadcast(json.dumps({"type": "frame_update", "data": state_dump}))
-        
+
         # 寮哄埗浼戠湢锛岃祴浜堝墠绔覆鏌撴椂闂达紝骞跺帇鍒?Token 鐖嗙偢
         await asyncio.sleep(5)
 
 @app.on_event("startup")
 async def startup_event():
     global sim_task, last_state_dump
-    
+
     # 寮哄埗鍦ㄦ帴鍙椾换浣?HTTP 璇锋眰鍓嶏紝鍏堝悓姝ュ垵濮嬪寲寮曟搸鍜岀姸鎬侊紝闃叉鍓嶇杩囨棭鑾峰彇鍒扮┖鍦板浘
-    
+
     sim = SmallvilleSimulation("smallville")
     agent_locations = {}
     for n in sim.environment.all_nodes():
         for agent_name in n.agents:
             agent_locations[agent_name] = n.name
-            
+
     def map_agent(a):
         return {
             "id": a.name,
@@ -255,8 +253,8 @@ async def startup_event():
         "objects": [],
         "logs": []
     }
-    
-    
+
+
     sim_task = asyncio.create_task(simulation_loop())
 
 @app.websocket("/ws/games/{game_id}")
@@ -264,7 +262,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
     await manager.connect(websocket)
     try:
         while True:
-            data = await websocket.receive_text()
+            _ = await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
