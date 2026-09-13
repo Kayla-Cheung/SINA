@@ -79,8 +79,7 @@
               "title": "书签"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -189,7 +188,7 @@
       "bases:新建数据库": false
     }
   },
-  "active": "3a5e88c0d1ea3218",
+  "active": "62b9fa38f02cb37b",
   "lastOpenFiles": [
     "Rooms/Riverbank.md",
     "Rooms/Cafe.md",

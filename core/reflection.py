@@ -1,6 +1,9 @@
 from typing import List
 from pydantic import BaseModel, Field
-from gateway import gateway
+try:
+    from .gateway import gateway
+except ImportError:
+    from gateway import gateway
 
 class InsightResponse(BaseModel):
     insights: List[str] = Field(..., description="A list of high-level insights")

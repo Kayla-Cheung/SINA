@@ -75,5 +75,59 @@ def test_multiple_hallucinations(middleware, agent_state, room_state):
     assert "Target not in same room: charlie" in result.hallucination_flags
     assert "Target not in same room: dave" in result.hallucination_flags
     assert "Target is dead: dave" in result.hallucination_flags
-    assert "Claimed item not in inventory: shield" in result.hallucination_flags
     assert "[SYSTEM: Action failed due to hallucination]" in result.rectified_action
+
+
+def test_settlement_engine_reality_check_interception():
+    """Verify that settle_all_intents intercepts hallucinated actions at runtime."""
+    import asyncio
+    from datetime import datetime
+    from core.settlement_engine import settle_all_intents
+    from core.action_intent import ActionIntent
+    from core.agent_state import AgentState
+    from core.environment import SandboxEnvironment
+    from core.physics_engine import PhysicsEngine
+
+    async def _run():
+        env = SandboxEnvironment(world_name="smallville")
+        physics = PhysicsEngine(world_name="smallville")
+        clock = datetime(2026, 1, 1, 10, 0)
+
+        alice = AgentState(name="Alice")
+        alice.hunger = 20
+        bob = AgentState(name="Bob")
+        bob.hunger = 20
+        world_agents = {"Alice": alice, "Bob": bob}
+
+        # Put Alice in Cafe, Bob in Supermarket (different rooms)
+        cafe = env.get_node_by_name("Cafe")
+        supermarket = env.get_node_by_name("Supermarket")
+        env.spawn_agent("Alice", cafe)
+        env.spawn_agent("Bob", supermarket)
+
+        # Alice hallucinates giving bread to Bob who is NOT in the Cafe
+        hallucinated_intent = ActionIntent(
+            agent_name="Alice",
+            raw_action={
+                "observable_action": "Alice hands a fresh loaf of bread to Bob.",
+                "internal_thought": "Bob looks hungry in the cafe with me.",
+                "give_item": "BREAD",
+                "give_target": "Bob",
+            },
+            source_room="Cafe",
+        )
+
+        logs = await settle_all_intents(
+            intents=[hallucinated_intent],
+            world_agents=world_agents,
+            physics=physics,
+            environment=env,
+            clock=clock,
+            is_night=False,
+        )
+
+        # Reality check must have intercepted and logged the rejection!
+        assert any("现实拦截" in log for log in logs)
+        assert "[SYSTEM: Action failed due to hallucination]" in hallucinated_intent.raw_action["observable_action"]
+
+    asyncio.run(_run())

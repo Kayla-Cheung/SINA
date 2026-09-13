@@ -11,9 +11,14 @@ import os
 import json
 import re
 from datetime import datetime
-from agent_state import AgentState
-from reflection import generate_insights
-from gateway import gateway
+try:
+    from .agent_state import AgentState
+    from .reflection import generate_insights
+    from .gateway import gateway
+except ImportError:
+    from agent_state import AgentState
+    from reflection import generate_insights
+    from gateway import gateway
 
 
 # ──────────────────────────────────────────────

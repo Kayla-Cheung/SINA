@@ -12,10 +12,12 @@ try:
     from .agent_state import AgentState
     from .physics_engine import PhysicsEngine
     from .environment import SandboxEnvironment
+    from .laplace_oracle import RealityCheckMiddleware
 except ImportError:
     from agent_state import AgentState
     from physics_engine import PhysicsEngine
     from environment import SandboxEnvironment
+    from laplace_oracle import RealityCheckMiddleware
 
 async def store_observation(agent: AgentState, text: str, clock: datetime):
     """将观察写入记忆流并增加重要性"""
@@ -56,6 +58,33 @@ async def settle_all_intents(
 
         current_node = environment.agent_locations.get(agent_name)
         if not current_node:
+            continue
+
+        # ── 0. 现实与物理实体前置校验 (Reality Check Middleware) ──
+        # 拦截跨房间交互、与死者对话、虚假背包道具等幻觉行为
+        check_res = RealityCheckMiddleware().check(
+            action_text=action.get("observable_action", ""),
+            thought_text=action.get("internal_thought", ""),
+            agent_state={"inventory": list(agent.inventory.keys())},
+            room_state={
+                "agents_present": list(current_node.agents),
+                "agents_known": list(world_agents.keys()),
+                "agents_dead": [a.name for a in world_agents.values() if a.is_dead],
+                "known_items": list(getattr(physics, "material_properties", {}).keys()),
+            },
+        )
+        if not check_res.should_proceed:
+            intent.raw_action["observable_action"] = check_res.rectified_action
+            flags_str = ", ".join(check_res.hallucination_flags)
+            log_line = f"[{time_str}] 🛑 [现实拦截] {agent_name} 的幻觉意图被物理法则驳回: {flags_str}"
+            logs.append(log_line)
+            if memory_manager:
+                memory_manager.record_event(
+                    agent_id=agent_name,
+                    tick=tick,
+                    content=f"行动受挫：{check_res.rectified_action}",
+                    location=current_node.name,
+                )
             continue
 
         feedback_events = []

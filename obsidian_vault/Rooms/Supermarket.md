@@ -1,19 +1,19 @@
 ---
 type: room
 room_name: Supermarket
-occupant_count: 1
+occupant_count: 0
 tags: [room, place, spatial_node]
 ---
 
 # 🏛️ 空间节点：Supermarket
 
 ## 👥 在场智能体 (Occupants)
-- [[Agents/Tom]]
+- *(空无一人)*
 
 ## 📦 空间物资 (Inventory)
-- **BREAD** × 25
+- **BREAD** × 50
 - **WATER** × 100
-- **APPLE** × 14
+- **APPLE** × 30
 
 ## 🚪 连通区域 (Connected Portals)
 - [[Rooms/Cafe]]
