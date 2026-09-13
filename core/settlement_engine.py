@@ -249,7 +249,7 @@ async def settle_all_intents(
                     from .action_intent import Proposal
                 except ImportError:
                     from action_intent import Proposal
-                active_proposal[0] = Proposal(agent_name, propose_bp)
+                active_proposal[0] = Proposal(agent_name, propose_bp, created_tick=tick, lifetime_ticks=4)
                 feedback_events.append(f"[提案发布] 你成功发起了新提案: '{propose_bp}'。")
                 logs.append(f"  [提案发起] {agent_name} 提出了提案: '{propose_bp}'")
                 for a_name, a_obj in world_agents.items():

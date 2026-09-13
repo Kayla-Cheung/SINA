@@ -83,3 +83,54 @@ def test_obsidian_sync_node_execution():
         assert result.next_node == "MemeDecay"
 
     asyncio.run(_run())
+
+
+def test_proposal_voting_window_retention_and_expiration():
+    """Verify that a proposal remains active across ticks until expire_tick, then adjudicates."""
+    import asyncio
+    from core.action_intent import Proposal
+    from core.dag_simulation import OracleJudgeNode
+
+    async def _run():
+        sim = DAGSmallvilleSimulation(world_name="smallville")
+        judge_node = OracleJudgeNode("OracleJudge")
+
+        async def mock_judge(content, tech_level):
+            from core.laplace_oracle import LaplaceVerdict
+            return LaplaceVerdict(
+                verdict="PHYSICS",
+                reasoning="Mocked passed",
+                eval_goal=1,
+                eval_believability=1,
+                eval_secret=1,
+                feasibility_score=4.0,
+            )
+        sim.oracle.judge = mock_judge
+
+        # Create a proposal at tick 10 with lifetime 4 (expires at tick 14)
+        sim.tick_count = 10
+        proposal = Proposal("Isabella", "所有人必须在篝火旁储备干草", created_tick=10, lifetime_ticks=4)
+        # Isabella votes YES
+        proposal.votes["Isabella"] = "YES"
+        sim.active_proposal[0] = proposal
+
+        # Tick 11: Window NOT expired, only 1 vote out of 6 -> stays pending!
+        sim.tick_count = 11
+        await judge_node.execute({"sim": sim})
+        assert sim.active_proposal[0] is proposal
+        assert proposal.status == "pending"
+
+        # Tick 12: Tom also votes YES
+        proposal.votes["Tom"] = "YES"
+        sim.tick_count = 12
+        await judge_node.execute({"sim": sim})
+        assert sim.active_proposal[0] is proposal
+
+        # Tick 14: Deadline reached! Window expires!
+        # Isabella (YES) + Tom (YES) = 2/2 YES (100% of cast votes) -> should adjudicate and clear proposal!
+        sim.tick_count = 14
+        await judge_node.execute({"sim": sim})
+        assert sim.active_proposal[0] is None
+        assert proposal.status in ("approved", "rejected")
+
+    asyncio.run(_run())

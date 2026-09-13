@@ -392,15 +392,17 @@ class OracleJudgeNode(DAGNode):
         if proposal:
             alive_names = [n for n, a in sim.world_agents.items() if not a.is_dead and not a.is_comatose]
             all_voted = len(alive_names) > 0 and all(n in proposal.votes for n in alive_names)
+            expired = sim.tick_count >= getattr(proposal, "expire_tick", sim.tick_count + 4)
 
-            if all_voted:
-                print("\n  📋 Phase 3: 提案多数裁决 [DAG算子]")
+            if all_voted or expired:
+                status_reason = "全员出席已投票" if all_voted else f"投票窗口期满 (截止第 {getattr(proposal, 'expire_tick', sim.tick_count)} 帧)"
+                print(f"\n  📋 Phase 3: 提案收官裁决 [{status_reason}] [DAG算子]")
                 yes_count = proposal.approval_count
-                total = len(alive_names)
+                total_voted = len(proposal.votes)
 
-                # 绝对多数制 (>66%) 替代全票死锁 (P4 治理优化)
-                if total > 0 and (yes_count / total) >= 0.66:
-                    print(f"    ✅ 提案多数通过 ({yes_count}/{total})，请求 Oracle 裁决...")
+                # 法定多数制：已投选票中赞成率 >= 66%，且至少有 1 票
+                if total_voted > 0 and (yes_count / total_voted) >= 0.66:
+                    print(f"    ✅ 提案多数通过 ({yes_count}/{total_voted} 赞成)，请求 Oracle 裁决...")
                     tech_level = [r.name for r in sim.physics.recipes]
                     verdict = await sim.oracle.judge(proposal.content, tech_level)
                     proposal.oracle_verdict = verdict
@@ -448,13 +450,16 @@ class OracleJudgeNode(DAGNode):
                             )
                 else:
                     proposal.status = "rejected"
-                    reject_msg = f"❌ 提案被驳回（赞成 {yes_count}/{total}，未达 66%）: {proposal.content}"
+                    reject_msg = f"❌ 提案未达多数通过（赞成 {yes_count}/{total_voted}）: {proposal.content}"
                     print(f"\n  📋 Phase 3: {reject_msg}")
                     for name, agent in sim.world_agents.items():
                         if not agent.is_dead:
                             agent.pending_events.append(reject_msg)
 
                 sim.active_proposal[0] = None
+            else:
+                remaining_ticks = getattr(proposal, "expire_tick", sim.tick_count + 4) - sim.tick_count
+                print(f"\n  📋 Phase 3: 提案审议中 (已收 {len(proposal.votes)}/{len(alive_names)} 票，窗口剩余 {remaining_ticks} 帧): 「{proposal.content[:30]}...」")
 
         return NodeResult(next_node="ObsidianSync", payload=state)
 

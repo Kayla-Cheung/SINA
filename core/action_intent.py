@@ -146,12 +146,15 @@ class Proposal:
          - 若提案描述的是信念、禁忌、仪式等 → 成为 Meme（主观层）
     """
 
-    def __init__(self, proposer: str, content: str):
+    def __init__(self, proposer: str, content: str, created_tick: int = 1, lifetime_ticks: int = 4):
         self.proposer: str = proposer         # 提案者智能体名
         self.content: str = content           # 提案文本内容
         self.votes: dict = {}                 # {agent_name: 'approve'|'reject', ...}
         self.status: str = "pending"          # 'pending' | 'approved' | 'rejected' | 'oracle_decided'
         self.oracle_verdict: dict | None = None  # Laplace Oracle 裁决结果
+        self.created_tick: int = created_tick
+        self.lifetime_ticks: int = lifetime_ticks
+        self.expire_tick: int = created_tick + lifetime_ticks
 
     def _is_yes(self, v) -> bool:
         if isinstance(v, dict):
