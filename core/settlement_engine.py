@@ -11,18 +11,21 @@ from datetime import datetime
 try:
     from .agent_state import AgentState
     from .laplace_oracle import RealityCheckMiddleware
+    from .dynamic_engine import store_observation
 except ImportError:
     from agent_state import AgentState
     from laplace_oracle import RealityCheckMiddleware
-
-async def store_observation(agent: AgentState, text: str, clock: datetime):
-    """将观察写入记忆流并增加重要性"""
-    agent.memory_stream.append({
-        "time": clock.strftime("%H:%M"),
-        "text": text,
-        "importance": 1
-    })
-    agent.importance_accumulator += 1
+    try:
+        from dynamic_engine import store_observation
+    except ImportError:
+        async def store_observation(agent: AgentState, text: str, clock: datetime):
+            """将观察写入记忆流并增加重要性"""
+            agent.memory_stream.append({
+                "time": clock.strftime("%H:%M"),
+                "text": text,
+                "importance": 1
+            })
+            agent.importance_accumulator += 1
 
 async def settle_all_intents(
     intents: list,
@@ -98,15 +101,14 @@ async def settle_all_intents(
                 _loser = combat_res["loser"]
                 loot = combat_res["loot_transferred"]
 
-                target_agent.hunger = max(0, target_agent.hunger - combat_res["loser_hunger_penalty"])
-
                 if winner == agent_name:
+                    target_agent.hunger = max(0, target_agent.hunger - combat_res["loser_hunger_penalty"])
                     desc = f"你击败了 {target_name}，抢到了 {loot if loot else '空气'}。"
                     t_desc = f"【遭到攻击】你被 {agent_name} 击败，失去了 {loot if loot else '什么也没失去'}，且受了重伤（饥饿大降）！"
                 else:
+                    agent.hunger = max(0, agent.hunger - combat_res["loser_hunger_penalty"])
                     desc = f"你试图攻击 {target_name} 却被反杀，失去了 {loot if loot else '尊严'}，受了重伤（饥饿大降）！"
                     t_desc = f"【遭到攻击】{agent_name} 试图攻击你，但被你击退并抢走了 {loot if loot else '空气'}。"
-                    agent.hunger = max(0, agent.hunger - combat_res["loser_hunger_penalty"])
 
                 feedback_events.append(f"[物理现实] {desc}")
                 target_agent.pending_events.append(t_desc)
@@ -316,6 +318,12 @@ async def settle_all_intents(
         if internal:
             memory_text += f" | 内心: {internal}"
 
+        # 始终写入智能体本地记忆流并驱动反思提炼引擎
+        await store_observation(agent, memory_text, clock)
+        for event in feedback_events:
+            await store_observation(agent, event, clock)
+
+        # 同时向分层记忆系统同步
         if memory_manager is not None:
             try:
                 from sina.memory.types import MemoryType
@@ -336,9 +344,5 @@ async def settle_all_intents(
                     )
             except Exception:
                 pass
-        else:
-            await store_observation(agent, memory_text, clock)
-            for event in feedback_events:
-                await store_observation(agent, event, clock)
 
     return logs

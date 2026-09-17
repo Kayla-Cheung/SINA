@@ -72,6 +72,9 @@ class BifurcationManager:
         3. Compact `stale_slice` into a single EpisodicMemory.
         4. Sinks into Vector Store and updates working memory.
         """
+        if not self._working_queue:
+            return None
+
         if len(self._working_queue) <= self.active_window_size and not force:
             return None
 

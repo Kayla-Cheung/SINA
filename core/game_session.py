@@ -422,7 +422,7 @@ class SessionManager:
 
     def create_game(self, map_config: Optional[dict] = None, start_time: Optional[str] = None) -> dict:
         world_name = resolve_world_name((map_config or {}).get("name"))
-        sim = DAGSmallvilleSimulation(world_name=world_name)
+        sim = DAGSmallvilleSimulation(world_name=world_name, resume=False)
         apply_start_time(sim, start_time)
         game_id = f"{world_name}-{uuid.uuid4().hex[:8]}"
         self.current = GameSession(sim, game_id)
@@ -505,7 +505,7 @@ class SessionManager:
         if not world:
             raise ValueError("Save file is missing world snapshot")
         world_name = resolve_world_name(data.get("world_name") or world.get("world_name"))
-        sim = DAGSmallvilleSimulation(world_name=world_name)
+        sim = DAGSmallvilleSimulation(world_name=world_name, resume=False)
         load_world_into_sim(sim, world)
         gid = game_id or data.get("game_id") or f"{world_name}-{uuid.uuid4().hex[:8]}"
         restore_memories(sim, gid)

@@ -14,6 +14,7 @@ import sys
 import os
 import json
 from datetime import datetime, timedelta
+from typing import Optional
 
 try:
     from .dag_engine import DAGEngine, DAGNode, NodeResult
@@ -61,7 +62,7 @@ class DualLogger:
 
 
 class SinaSimulation:
-    def __init__(self, world_name: str = "smallville"):
+    def __init__(self, world_name: str = "smallville", resume: Optional[bool] = None):
         self.terminal = sys.stdout
         self.world_name = world_name
         self.environment = SandboxEnvironment(world_name=world_name)
@@ -94,7 +95,10 @@ class SinaSimulation:
         self.observer = ObsidianVaultObserver(vault_dir=vault_dir)
 
         agents_path = os.path.join(base_dir, "worlds", world_name, "config", "agents.json")
-        if os.path.exists(agents_path):
+        if (resume is not False) and os.path.exists(self.save_file):
+            self._load_world_state(self.save_file)
+            print(f"✅ 从存档 {self.save_file} 恢复世界状态")
+        elif os.path.exists(agents_path):
             self._load_from_config(agents_path)
             print(f"✅ 从 {agents_path} 初始化新世界并挂载分层记忆体系")
         elif os.path.exists(self.save_file):
@@ -221,16 +225,21 @@ class AgentThinkNode(DAGNode):
         intents = []
 
         for name, agent in sim.world_agents.items():
+            if agent.is_dead:
+                continue
+
+            # 自然代谢消耗
+            agent.hunger = max(-5, agent.hunger - 1)
+
             # 1. 死亡与掉落
-            if agent.is_dead or agent.hunger <= -5:
-                if not agent.is_dead:
-                    print(f"    💀 {name} 因极度饥饿（饥饿度 {agent.hunger}/30）死去了...")
-                    agent.is_dead = True
-                    loc_node = sim.environment.agent_locations.get(name)
-                    if loc_node and agent.inventory:
-                        for item, count in agent.inventory.items():
-                            loc_node.inventory[item] = loc_node.inventory.get(item, 0) + count
-                        agent.inventory = {}
+            if agent.hunger <= -5:
+                print(f"    💀 {name} 因极度饥饿（饥饿度 {agent.hunger}/30）死去了...")
+                agent.is_dead = True
+                loc_node = sim.environment.agent_locations.get(name)
+                if loc_node and agent.inventory:
+                    for item, count in agent.inventory.items():
+                        loc_node.inventory[item] = loc_node.inventory.get(item, 0) + count
+                    agent.inventory = {}
                 continue
 
             # 2. 昏迷判定

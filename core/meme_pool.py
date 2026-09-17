@@ -224,7 +224,7 @@ class MemePool:
             disconfirmation_found = False
             for agent in world_agents:
                 for memory in agent.memory_stream:
-                    memory_content = memory.get("content", "") if isinstance(memory, dict) else str(memory)
+                    memory_content = (memory.get("content") or memory.get("text") or "") if isinstance(memory, dict) else str(memory)
                     for keyword in self._DISCONFIRMATION_KEYWORDS:
                         if keyword in memory_content:
                             disconfirmation_found = True

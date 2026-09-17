@@ -14,7 +14,7 @@ SINA v4 双层架构 · 前文明多智能体仿真
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 
 class ActionSchema(BaseModel):
     internal_thought: str = Field(..., description="内心独白")
@@ -25,7 +25,7 @@ class ActionSchema(BaseModel):
     attack_target: Optional[str] = Field(default=None, description="攻击目标智能体名")
     craft: Optional[str] = Field(default=None, description="制作配方名")
     propose_blueprint: Optional[str] = Field(default=None, description="提案内容")
-    vote_on_blueprint: Optional[Dict[str, Any]] = Field(default=None, description="对提案的投票")
+    vote_on_blueprint: Optional[Union[str, Dict[str, Any]]] = Field(default=None, description="对提案的投票")
     give_item: Optional[Dict[str, Any]] = Field(default=None, description="赠与物品")
     take_item_tag: Optional[str] = Field(default=None, description="拾取的物品标签")
     drop_item_tag: Optional[str] = Field(default=None, description="丢弃的物品标签")

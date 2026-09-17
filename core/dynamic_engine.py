@@ -248,7 +248,10 @@ async def determine_next_action(
 - discard_memory_thought: 主动丢弃当前头脑中无用、重复的执念（字符串），或 null
 """
 
-    from action_intent import ActionSchema
+    try:
+        from .action_intent import ActionSchema
+    except ImportError:
+        from action_intent import ActionSchema
 
     user_prompt = "根据当前处境，决定你下一步的行动。"
     action_obj = await gateway.generate_structured(
