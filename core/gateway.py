@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 # 自动寻找项目根目录的 .env 文件
 load_dotenv()
 
-DEFAULT_BASE_URL = "https://api.siliconflow.cn/v1"
-DEFAULT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+DEFAULT_BASE_URL = "https://api.deepseek.com"
+DEFAULT_MODEL = "deepseek-chat"
 
 
 def mask_secret(value: str) -> str:
@@ -36,8 +36,8 @@ class AsyncLLMGateway:
     def __init__(self, max_concurrency: int = 5, api_key: Optional[str] = None):
         key = (
             api_key
-            or os.getenv("SILICONFLOW_API_KEY")
             or os.getenv("DEEPSEEK_API_KEY")
+            or os.getenv("SILICONFLOW_API_KEY")
             or os.getenv("OPENAI_API_KEY")
             or "sk-placeholder"
         )

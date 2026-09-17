@@ -442,6 +442,14 @@ class SessionManager:
     def get_game(self, game_id: str) -> Optional[dict]:
         if self.current and self.current.game_id == game_id:
             return self.current.snapshot()
+        path = saves_dir() / f"{game_id}.json"
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return data.get("state")
+            except (OSError, json.JSONDecodeError):
+                pass
         return None
 
     async def step(
@@ -573,6 +581,8 @@ class SessionManager:
                 long_term.append({
                     "memory_id": mem.memory_id,
                     "summary": mem.summary,
+                    "content": mem.summary,
+                    "timestamp": f"Tick {mem.tick_start}" if getattr(mem, "tick_start", None) is not None else "",
                     "tick_start": mem.tick_start,
                     "tick_end": mem.tick_end,
                     "location": mem.location,

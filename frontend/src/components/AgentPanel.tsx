@@ -49,9 +49,11 @@ export function AgentPanel({ agents, map, objects }: Props) {
                 <div className="mt-2 pt-2 border-t border-stone-200">
                   <p className="text-xs text-stone-500 mb-1">Last memory:</p>
                   <p className="text-xs text-amber-900">
-                    <span className="text-stone-400 font-mono">[{agent.short_term_memory[0].timestamp}]</span>{' '}
-                    {agent.short_term_memory[0].content.slice(0, 80)}
-                    {agent.short_term_memory[0].content.length > 80 ? '...' : ''}
+                    <span className="text-stone-400 font-mono">
+                      [{agent.short_term_memory[agent.short_term_memory.length - 1].timestamp}]
+                    </span>{' '}
+                    {agent.short_term_memory[agent.short_term_memory.length - 1].content.slice(0, 80)}
+                    {agent.short_term_memory[agent.short_term_memory.length - 1].content.length > 80 ? '...' : ''}
                   </p>
                 </div>
               )}

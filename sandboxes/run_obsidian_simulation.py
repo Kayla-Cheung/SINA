@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.environment import SandboxEnvironment, EnvNode
 from core.agent_state import AgentState
 from core.physics_engine import PhysicsEngine
-from core.action_intent import ActionIntent, Proposal
+from core.action_intent import ActionIntent
 from core.settlement_engine import settle_all_intents
 from sina.memory.manager import HierarchicalMemoryManager
 from sina.memory.types import PersonaInvariant, MemoryType
@@ -33,7 +33,7 @@ class StandaloneWorld:
 
         # 1. Spatial Topology
         self.environment = SandboxEnvironment(world_name=world_name)
-        
+
         # 2. Physics Substrate
         self.physics = PhysicsEngine(world_name=world_name)
 
@@ -151,7 +151,7 @@ class StandaloneWorld:
         self.tick_count += 1
         self.clock += timedelta(minutes=15)
         is_night = not (6 <= self.clock.hour < 21)
-        
+
         # 1. Environment Phase: Spoilage & Town Resource Replenishment
         for node in self.environment.all_nodes():
             self.physics.resolve_spoilage(node.inventory)
@@ -196,7 +196,7 @@ class StandaloneWorld:
             # Record observation into Hierarchical Memory
             loc_node = self.environment.agent_locations.get(name)
             room_name = loc_node.name if loc_node else "Cafe"
-            
+
             obs_text = f"在小镇 {room_name} 感到身体精力为 {agent.hunger}/30。"
             if custom_event and name in ("Isabella", "Tom", "Ryan"):
                 obs_text += f" 【小镇热点】{custom_event}"
@@ -323,7 +323,7 @@ async def main():
     print("----------------------------------------------------------------")
 
     world = StandaloneWorld(vault_path=vault_dir)
-    
+
     # Pre-sync initial state
     world.observer.sync_tick(world, memory_manager=world.memory_manager)
     print("✅ 初始世界节点已写入 Vault。开始交互式推演循环...\n")
@@ -364,7 +364,7 @@ async def main():
             print(f"⚡ [上帝干预] 注入突发事件: {custom_event}")
 
         logs = await world.step(custom_event=custom_event)
-        
+
         # Display Tick Summary
         alive = sum(1 for a in world.world_agents.values() if not a.is_dead and not a.is_comatose)
         comatose = sum(1 for a in world.world_agents.values() if a.is_comatose)

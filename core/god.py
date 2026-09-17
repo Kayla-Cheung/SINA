@@ -6,13 +6,14 @@ from typing import Any, Dict, Optional, Literal
 
 from pydantic import BaseModel, Field
 
-from .models import AgentState, ToolCall
-from .parse_tool import parse_tool_call_from_dict
-
 try:
+    from .models import AgentState, ToolCall
+    from .parse_tool import parse_tool_call_from_dict
     from .gateway import gateway
 except ImportError:
-    pass
+    from models import AgentState, ToolCall
+    from parse_tool import parse_tool_call_from_dict
+    from gateway import gateway
 
 
 @dataclass

@@ -2,7 +2,10 @@ import asyncio
 from typing import List
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
-from gateway import gateway
+try:
+    from .gateway import gateway
+except ImportError:
+    from gateway import gateway
 
 # ================= 数据契约 (Pydantic) =================
 class PlanItem(BaseModel):

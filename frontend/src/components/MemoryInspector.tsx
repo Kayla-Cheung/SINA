@@ -191,10 +191,12 @@ export function MemoryInspector({ gameState, getAgentMemories, getAgentPrompt }:
               Long-term / RAG ({memories.long_term.length})
             </h4>
             <div className="space-y-1">
-              {memories.long_term.map((m, i) => (
+              {memories.long_term.map((m: any, i) => (
                 <div key={i} className="text-xs bg-stone-50 border border-stone-200 p-2 rounded">
-                  <span className="text-stone-400 font-mono">[{m.timestamp}]</span>{' '}
-                  <span className="text-stone-700">{m.content}</span>
+                  <span className="text-stone-400 font-mono">
+                    [{m.timestamp || (m.tick_start != null ? `Tick ${m.tick_start}` : '')}]
+                  </span>{' '}
+                  <span className="text-stone-700">{m.content || m.summary}</span>
                 </div>
               ))}
               {memories.long_term.length === 0 && (
