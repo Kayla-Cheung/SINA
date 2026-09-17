@@ -5,135 +5,142 @@
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/Frontend-React%20%7C%20Vite-61DAFB.svg?logo=react&logoColor=white)](https://react.dev/)
 
-> **Status**: SINA v4 (Public Core Engine Infrastructure)  
-> **Architecture**: Distributed Multi-Agent System · DAG Execution Pipeline · 4-Tier Hierarchical Memory · Concurrency Settlement Lock
+> **状态**：v4（公开核心引擎） · 单人项目，仍在活跃开发
+> **技术栈**：FastAPI · NumPy · React/Vite · Obsidian
 
-SINA is an open-source, industrial-grade multi-agent sociological simulation engine. Rather than treating multi-agent systems (MAS) as naive prompt chains or monolithic chat wrappers, SINA models simulated societies as **distributed systems under physical and computational constraints**.
+SINA 是一个多智能体社会模拟引擎。它不把多智能体系统当成提示词链或聊天壳，而是当成**受物理与算力约束的分布式系统**来建模：智能体只能感知自己所在房间发生的事，资源有限，记忆随阶层衰减，任何动作都要经过统一的物理结算才能改变世界状态。
 
----
-
-## 🏛️ First-Principles Axioms
-
-SINA is constructed upon four non-negotiable physical and sociological axioms:
-
-| Axiom | Principle | Computational Definition | SINA System Invariant |
-| :--- | :--- | :--- | :--- |
-| **Axiom 1** | **Cognitive Locality** | Observers have finite light-cones; no global broadcast exists in reality. | **Spatial Topology Isolation**: Events propagate strictly through local graph nodes. Cross-room leakage is strictly $0.0\%$. |
-| **Axiom 2** | **Resource Scarcity** | High-fidelity cognitive maintenance requires physical energy and capital. | **Class-Gated Memory Fidelity**: Impoverished agents experience memory decay, retrieval dropout, and forced confabulation. |
-| **Axiom 3** | **Anti-Stagnation** | Closed multi-agent loops inevitably collapse into sycophantic echo chambers ($H(W) \to 0$). | **Entropy & Temperature Modulation**: Real-time cognitive entropy tracking injects adaptive perturbations. |
-| **Axiom 4** | **Hierarchical Memory** | Working memory context is strictly bounded ($O(1)$ upper bound per tick). | **Dual-Layer Bifurcation**: Automatic compaction and sinking from working context ($S_t$) to episodic vector storage. |
+这是一个个人研究项目——约 8k 行 Python 加一套 React 前端。它能完整跑通单步与自动推演循环，但**不是开箱可用的产品**：需要自备 LLM API key，接口与存档格式仍在变动。如果想先了解它的边界，请直接看文末的[已知限制](#-已知限制)。
 
 ---
 
-## 📐 System Architecture
+## 设计原则
+
+下面四条不是"公理"，而是这个项目选择遵守的建模约束。每条都对应一处具体实现：
+
+| 原则 | 动机 | 实现 |
+| :--- | :--- | :--- |
+| **认知局部性** | 现实中不存在全局广播，观察者只有有限视野 | 事件只沿空间图的相邻节点传播，跨房间不可见（`sina/environment.py`） |
+| **资源稀缺** | 维持认知需要消耗能量与资本 | 记忆保真度受阶层指数门控，低阶层智能体出现衰减与虚构（`ClassGatedDecayEngine`） |
+| **反停滞** | 闭环多智能体系统会收敛成互相附和的回声室 | 实时统计认知熵 $H(W)$，按需注入扰动 |
+| **有界记忆** | 工作记忆不能随 tick 无限增长 | 超过 token 阈值后自动压缩并下沉到向量存储 |
+
+---
+
+## 系统架构
 
 ```mermaid
 graph TD
-    subgraph SINA Subsystem Topology
-        Env[Spatial Grid & Environment Substrate] -->|Local Visible Events| Gateway[Gateway / DAG Pipeline]
-        
-        Gateway --> ParallelThink[AgentThinkNode Swarm<br/>asyncio.gather]
-        ParallelThink --> GodAgent[GodAgent / Translation Mesh<br/>Pydantic Structured Contracts]
-        GodAgent --> PhysicsLock[Physics Settle Lock<br/>Resource Race Resolution]
+    subgraph SINA 子系统拓扑
+        Env[空间网格与环境基底] -->|局部可见事件| Gateway[Gateway / DAG Pipeline]
+
+        Gateway --> ParallelThink[AgentThinkNode 并发<br/>asyncio.gather]
+        ParallelThink --> GodAgent[GodAgent / 翻译层<br/>Pydantic 结构化契约]
+        GodAgent --> PhysicsLock[物理结算锁<br/>资源竞争仲裁]
         PhysicsLock --> Env
 
-        subgraph Hierarchical Memory Subsystem [sina.memory]
-            P_Self["Layer 0: P_Self Invariant Anchor<br/>(Immutable Persona / Class Index)"]
-            Working["Layer 1: Working Context S_t<br/>(Sliding Window / θ Threshold)"]
+        subgraph 分层记忆子系统 [sina.memory]
+            P_Self["Layer 0: P_Self 人格锚点<br/>(不可变人格 / 阶层索引)"]
+            Working["Layer 1: 工作上下文 S_t<br/>(滑窗 / θ 阈值)"]
             Bifurcate{"Bifurcation Manager<br/>Tokens(S_t) > θ ?"}
-            Episodic["Layer 2: Episodic Vector Store<br/>(Contiguous NumPy BLAS Matrix)"]
-            Decay["Class-Gated Decay Engine<br/>(Noise / Half-Life / Confabulation)"]
-            
+            Episodic["Layer 2: 情景向量存储<br/>(连续 NumPy BLAS 矩阵)"]
+            Decay["阶层门控衰减引擎<br/>(噪声 / 半衰期 / 虚构)"]
+
             P_Self --> Working
             Working --> Bifurcate
-            Bifurcate -->|Compaction Sink| Episodic
+            Bifurcate -->|压缩下沉| Episodic
             Episodic --> Decay
-            Decay -->|RAG Recall| Working
+            Decay -->|RAG 召回| Working
         end
 
-        ParallelThink <--> Hierarchical Memory Subsystem
-        PhysicsLock -->|State Broadcast| WS[FastAPI WebSocket Stream]
-        WS --> UI[React / Vite Observer Dashboard]
+        ParallelThink <--> 分层记忆子系统
+        PhysicsLock -->|状态广播| WS[FastAPI WebSocket]
+        WS --> UI[React / Vite 观察面板]
     end
 ```
 
 ---
 
-## 🧠 Core Subsystems
+## 核心子系统
 
-### 1. Hierarchical Memory Subsystem (`sina.memory`)
-* **Layer 0 (`PersonaInvariant`)**: Stack-allocated sentinel anchor preventing persona drift across thousands of simulation ticks.
-* **Layer 1 (`BifurcationManager`)**: Real-time token budget monitoring. When $S_t > \theta$, historical slices are distilled and sunken into Layer 2, keeping working context bounded in $O(1)$ space.
-* **Layer 2 (`EpisodicVectorStore`)**: Flat, contiguous 2D NumPy matrices executing batch cosine similarity via single-pass BLAS operations ($Q \cdot M^T$), with SQLite cold persistence.
-* **Sociological Decay & Confabulation (`ClassGatedDecayEngine`)**: Wealthier agents retain crisp memory fidelity; lower-class agents experience exponential decay and generate rationalized false consciousness when memory gaps occur.
+### 1. 分层记忆 (`sina.memory`)
+* **Layer 0 `PersonaInvariant`**：不可变的人格锚点，防止长 tick 推演中人格漂移。
+* **Layer 1 `BifurcationManager`**：实时监控 token 预算。当工作上下文 $S_t > \theta$ 时，把历史切片蒸馏后下沉到 Layer 2，使工作上下文保持有界。
+* **Layer 2 `EpisodicVectorStore`**：连续 2D NumPy 矩阵，用单次 BLAS 运算（$Q \cdot M^T$）做批量余弦相似度检索；冷数据持久化到 SQLite。
+* **阶层门控衰减 (`ClassGatedDecayEngine`)**：富裕智能体记忆保真度高；低阶层智能体的记忆按半衰期指数衰减，在记忆缺口处生成合理化叙事（即虚构）。
 
-### 2. DAG Concurrency & Physical Settlement (`core/`)
-* **Parallel Intention Generation**: Agents evaluate environmental stimuli asynchronously via `AgentThinkNode`.
-* **Deterministic Physics Settlement**: Physical conflicts and interactions pass through `RealityCheckMiddleware` and `settlement_engine.py`, enforcing immutable physical laws and preventing cognitive hallucinations from mutating world state.
+### 2. DAG 并发与物理结算 (`core/`)
+* **并行意图生成**：`AgentThinkNode` 并发评估环境刺激。
+* **确定性物理结算**：冲突与交互统一经过 `RealityCheckMiddleware` 与 `settlement_engine.py`，拦截跨房间交互、与死者对话、凭空造物等幻觉，不让 LLM 输出直接改写世界状态。
 
-### 3. Spatial Topology & Dual Observer Visualizers
-* **Obsidian-Native Force-Directed Star Map (`sina.observer`)**: Transforms live simulation states into interconnected Markdown notes with bidirectional `[[wikilinks]]`, YAML metadata, and 2D `.canvas` topologies. Open `obsidian_vault/` in Obsidian (`Ctrl + G`) to inspect social light-cones and memory graphs via native GPU-accelerated force physics.
-* **Web UI Dashboard (`frontend/`)**: Headless simulation state can also stream over WebSockets to a React + Tailwind + Vite observation dashboard with real-time map topology and memory inspectors.
+### 3. 空间拓扑与两种观察视图
+* **Obsidian 星图 (`sina.observer`)**：把实时模拟状态导出为带双向 `[[wikilinks]]` 与 YAML 元数据的 Markdown 笔记，以及 2D `.canvas` 拓扑。用 Obsidian 打开 `obsidian_vault/`（`Ctrl + G`）即可借用 Obsidian 自带的力导向图查看社群视野与记忆图。
+* **Web 面板 (`frontend/`)**：无头模拟状态也可经 WebSocket 推送到 React + Tailwind + Vite 面板，含实时地图拓扑与记忆查看器。
 
 ---
 
-## 🚀 Quickstart
+## 🚀 快速开始
 
-### Prerequisites
+### 环境要求
 * Python 3.11+
-* Obsidian (optional, for native Star Map visualizer)
-* Node.js 18+ (optional, for web frontend dashboard)
+* Obsidian（可选，用于星图视图）
+* Node.js 18+（可选，用于 Web 面板）
 
-### 1. Installation
+### 1. 安装
 ```bash
-# Clone the repository
 git clone https://github.com/Kayla-Cheung/SINA.git
 cd SINA
 
-# Install backend dependencies
 pip install -r requirements.txt
 
-# Configure environment variables
 cp .env.example .env
-# Edit .env to supply your DEEPSEEK_API_KEY / OPENAI_API_KEY
+# 编辑 .env，填入 DEEPSEEK_API_KEY / OPENAI_API_KEY
 ```
 
-### 2. Run Test Suite
+### 2. 跑测试
 ```bash
-# Verify SINA v4 Memory Hierarchy, Core Physics, & Obsidian Observer
 pytest sina/tests/ -v
 ```
 
-### 3. Launch Simulation with Obsidian Star Map (Recommended)
+### 3. 启动模拟（Obsidian 星图）
 ```bash
-# Step 1: Open Obsidian -> "Open folder as vault" -> select the `obsidian_vault/` folder
-# Step 2: In Obsidian, press Ctrl + G (Global Graph) or open World_Canvas.canvas
-# Step 3: Launch interactive discrete simulation
+# 第 1 步：打开 Obsidian → "Open folder as vault" → 选择 obsidian_vault/ 目录
+# 第 2 步：在 Obsidian 中按 Ctrl + G（全局图谱），或打开 World_Canvas.canvas
+# 第 3 步：启动交互式离散模拟
 python sandboxes/run_obsidian_simulation.py
 ```
 
-### 4. Alternative: Launch Web Server & Dashboard
+### 4. 备选：启动 Web 服务与面板
 ```bash
-# Terminal 1: Launch Backend Engine (from repo root, or `cd core && python server.py`)
+# 终端 1：启动后端引擎（仓库根目录，或 cd core && python server.py）
 python core/server.py
 
-# Terminal 2: Launch Frontend Observer Dashboard
+# 终端 2：启动前端面板
 cd frontend
 npm install
 npm run dev
 ```
 
-Open the Vite URL (default http://localhost:5173). Configure a chat LLM API key if you have one, then **Create Game**. The dashboard does not start a simulation until you create or continue a save.
+打开 Vite 输出的地址（默认 http://localhost:5173）。填入对话模型 API key 后点击 **Create Game**。面板不会自动开始推演，需要你先新建或继续一个存档。
 
-Use **Step** / **Auto-step** to advance the existing DAG tick loop. Each step waits until that tick finishes (including any LLM calls) before the map updates. Games autosave under `data/saves/` after every tick. Export downloads the same JSON that **Import save JSON** accepts.
+用 **Step** / **Auto-step** 推进已有的 DAG tick 循环：每步会等该 tick 全部完成（含 LLM 调用）后才刷新地图。存档每 tick 后自动写入 `data/saves/`；**Export** 导出的 JSON 与 **Import save JSON** 接受的格式一致。
 
-Without an API key, create/step still work at the HTTP layer; agent decisions follow the existing engine fallback when the LLM call fails.
-
+没有 API key 时，创建/单步在 HTTP 层仍可运行，智能体决策会走引擎内置的兜底逻辑。
 
 ---
 
-## 🔒 Security & Engine-Config Decoupling Notice
+## 场景配置
 
-This repository contains the **Public Engine Infrastructure** only. In accordance with SINA's *Engine-Config Decoupling* architecture:
-- Concrete literary/sociological scenarios (e.g., *Dream of the Red Chamber*, *Stanford Town*, private macro-economies) and specific hyperparameter configurations are kept in `.gitignore`'d private vaults.
-- Core simulation primitives, memory state machines, and mathematical settlement engines are fully open-sourced under the MIT License.
+`worlds/` 下带有两个可直接运行的示例场景（`smallville`、`stone_age`），各自包含 `agents.json`、`map.json`、`physics.json`、`prompt.json`。想换场景，改这四份配置即可，核心引擎无需改动。
+
+注意：密钥只放在 `.env`（已被 `.gitignore` 忽略）。`worlds/` 与 `obsidian_vault/` 下的内容本身是**会**进版本库的，如果要带私有剧本，请自行加进 `.gitignore`。
+
+---
+
+## ⚠️ 已知限制
+
+* **单人项目**：无外部贡献者，接口与存档格式可能随版本变动。
+* **需要自备 LLM**：所有智能体决策依赖外部 API，跑一次完整推演有实际 token 成本。
+* **后端测试较完整，前端没有**：后端 `pytest sina/tests/ -v` 共 123 个用例，覆盖记忆层级、DAG 调度、物理结算、存档往返、观察器导出与若干边界情况；`frontend/` 没有任何自动化测试。
+* **issue 列表尚未清理完毕**：多为接口一致性、存档迁移与边界情况。
+* **性能未做基准测试**：规模上限（智能体数 × tick 数）还没有系统测量数据。
