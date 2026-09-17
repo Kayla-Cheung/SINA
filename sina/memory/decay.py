@@ -30,10 +30,16 @@ class ClassGatedDecayEngine:
         base_half_life_ticks: float = 100.0,
         noise_scale: float = 0.2,
         confabulation_threshold: float = 0.35,
+        seed: Optional[int] = None,
+        rng: Optional[random.Random] = None,
     ):
         self.base_half_life = base_half_life_ticks
         self.noise_scale = noise_scale
         self.confabulation_threshold = confabulation_threshold
+        # 丢弃与噪声原本用的是未播种的全局 RNG，跨进程/跨 run 不可复现 ——
+        # 做 A/B/C 对照时这会把条件间的差异和随机波动混在一起。
+        # rng 为 None 时保持旧行为（用全局 RNG），传入后完全可复现。
+        self.rng = rng if rng is not None else (random.Random(seed) if seed is not None else None)
 
     def calculate_recency_decay(
         self,
@@ -69,7 +75,8 @@ class ClassGatedDecayEngine:
         # Class-gated memory dropout: poor agents randomly miss older memories
         if class_idx < 0.4:
             dropout_prob = (1.0 - class_idx) * 0.4 * (1.0 - decay_mult)
-            if random.random() < dropout_prob:
+            roll = self.rng.random() if self.rng is not None else random.random()
+            if roll < dropout_prob:
                 return None  # Memory dropped / forgotten
 
         # Normalization
@@ -81,7 +88,10 @@ class ClassGatedDecayEngine:
         noise = 0.0
         if class_idx < 0.8:
             sigma = self.noise_scale * (1.0 - class_idx)
-            noise = float(np.random.normal(0, sigma))
+            if self.rng is not None:
+                noise = float(self.rng.gauss(0.0, sigma))
+            else:
+                noise = float(np.random.normal(0, sigma))
 
         composite_score = (
             query.alpha_relevance * norm_relevance

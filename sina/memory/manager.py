@@ -18,6 +18,7 @@ from .types import (
 from .store import EpisodicVectorStore
 from .decay import ClassGatedDecayEngine
 from .bifurcation import BifurcationManager
+from .retrieval_policy import RetrievalPolicy, RetrievalConfig
 
 
 class HierarchicalMemoryManager:
@@ -32,10 +33,16 @@ class HierarchicalMemoryManager:
         vector_store: Optional[EpisodicVectorStore] = None,
         decay_engine: Optional[ClassGatedDecayEngine] = None,
         default_token_threshold: int = 1500,
+        retrieval_policy: Optional[RetrievalPolicy] = None,
     ):
-        self.vector_store = vector_store or EpisodicVectorStore()
-        self.decay_engine = decay_engine or ClassGatedDecayEngine()
+        # 必须显式判 None：EpisodicVectorStore 定义了 __len__，空 store 是 falsy，
+        # 用 `or` 会把调用方传进来的空 store 悄悄丢掉、换成一个新实例。
+        self.vector_store = vector_store if vector_store is not None else EpisodicVectorStore()
+        self.decay_engine = decay_engine if decay_engine is not None else ClassGatedDecayEngine()
         self.default_token_threshold = default_token_threshold
+        # 检索策略：默认关闭（纯 top-k），行为与引入本参数前一致。
+        self.retrieval_policy = retrieval_policy or RetrievalPolicy(RetrievalConfig())
+        self.last_retrieval_meta: Optional[dict] = None
         self._personas: Dict[str, PersonaInvariant] = {}
         self._bifurcation_managers: Dict[str, BifurcationManager] = {}
         # 注册时显式给定的 token 预算基线 (阈值, 当时财富)。社会地位变动时
@@ -140,6 +147,30 @@ class HierarchicalMemoryManager:
         )
         return bm.append(item)
 
+    def _evaluate_candidates(
+        self,
+        candidates,
+        query: MemoryQuery,
+        persona: PersonaInvariant,
+    ) -> List[MemoryRetrievalResult]:
+        """对候选记忆逐个算 composite_score，丢弃被阶层衰减器丢弃的，按分降序返回。
+
+        两条检索路径（纯 top-k 与随机化）共用它，保证打分口径完全一致 ——
+        否则 A/B/C 的差别里会混进「打分方式不同」这个混淆项。
+        """
+        results: List[MemoryRetrievalResult] = []
+        for mem, raw_sim in candidates:
+            eval_res = self.decay_engine.evaluate_memory_item(
+                memory=mem,
+                query=query,
+                persona=persona,
+                raw_similarity=raw_sim,
+            )
+            if eval_res is not None:
+                results.append(eval_res)
+        results.sort(key=lambda x: x.composite_score, reverse=True)
+        return results
+
     def retrieve_memories(self, query: MemoryQuery) -> List[MemoryRetrievalResult]:
         """
         Query Layer 2 episodic memory with vector search and apply class-gated decay.
@@ -152,26 +183,28 @@ class HierarchicalMemoryManager:
 
         # Vector search from store
         q_vec = query.query_embedding or self.vector_store._generate_fallback_vector(query.query_text)
-        candidates = self.vector_store.search(
-            query_vector=q_vec,
-            agent_id=agent_id,
-            top_k=query.top_k * 2,  # oversample to allow for decay and dropout
-        )
 
-        results: List[MemoryRetrievalResult] = []
-        for mem, raw_sim in candidates:
-            eval_res = self.decay_engine.evaluate_memory_item(
-                memory=mem,
-                query=query,
-                persona=persona,
-                raw_similarity=raw_sim,
+        if self.retrieval_policy.config.enabled:
+            # 随机化路径：需要该 agent **全部**幸存的记忆（B/C 条件要从
+            # 「本不会被检索到的池子」里取样，只取 top-k*2 是够不到的）。
+            candidates = self.vector_store.search(
+                query_vector=q_vec,
+                agent_id=agent_id,
+                top_k=max(1, len(self.vector_store)),
             )
-            if eval_res is not None:
-                results.append(eval_res)
-
-        # Sort by composite score descending
-        results.sort(key=lambda x: x.composite_score, reverse=True)
-        final_results = results[:query.top_k]
+            ranked = self._evaluate_candidates(candidates, query, persona)
+            final_results, meta = self.retrieval_policy.select(ranked, query.top_k)
+            final_results = list(final_results)
+            self.last_retrieval_meta = meta
+        else:
+            candidates = self.vector_store.search(
+                query_vector=q_vec,
+                agent_id=agent_id,
+                top_k=query.top_k * 2,  # oversample to allow for decay and dropout
+            )
+            results = self._evaluate_candidates(candidates, query, persona)
+            final_results = results[:query.top_k]
+            self.last_retrieval_meta = None
 
         # Check for confabulation trigger on poor agents with low recall
         if len(final_results) == 0 and persona.class_index < 0.4:

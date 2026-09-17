@@ -13,6 +13,7 @@ import asyncio
 import sys
 import os
 import json
+import random
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -47,6 +48,8 @@ except ImportError:
 
 from sina.memory.manager import HierarchicalMemoryManager
 from sina.memory.types import PersonaInvariant, MemoryType
+from sina.memory.decay import ClassGatedDecayEngine
+from sina.memory.retrieval_policy import RetrievalPolicy, RetrievalConfig
 from sina.observer.obsidian_vault import ObsidianVaultObserver
 
 # 季节显示名，与 constants.season_index 的 0..3 一一对应。
@@ -124,11 +127,28 @@ class SinaSimulation:
 
         # 核心挂载：行动租约状态机与分层记忆管理器
         self.action_inertia_engine = ActionInertiaEngine()
-        self.memory_manager = HierarchicalMemoryManager()
 
-        # 社会流动引擎：补上 class → 记忆 → 行为 → 资源 → class 的最后一段。
+        # 检索策略（自变量）：SINA_RETRIEVAL_MODE=topk|random|tail。
+        # 未设置时 enabled=False，走原封不动的纯 top-k 路径。
+        retrieval_config = RetrievalConfig.from_env()
+        decay_engine = None
+        if retrieval_config.enabled and retrieval_config.seed is not None:
+            # 阶层衰减器的丢弃/噪声原本用未播种的全局 RNG；要跑对照实验就得钉住。
+            decay_engine = ClassGatedDecayEngine(seed=retrieval_config.seed)
+            random.seed(retrieval_config.seed)
+        self.memory_manager = HierarchicalMemoryManager(
+            decay_engine=decay_engine,
+            retrieval_policy=RetrievalPolicy(retrieval_config),
+        )
+
+        # 社会流动引擎（计量表）：补上 class → 记忆 → 行为 → 资源 → class 的最后一段。
         # 默认关闭（SINA_MOBILITY 未设置时 enabled=False），因此不改变既有行为。
         self.mobility = SocialMobilityEngine(MobilityConfig.from_env())
+
+        # 运行统计：唯一能在事后算「约束违反率 U」的地方（结算日志里数现实拦截）。
+        self.stats = {"ticks": 0, "intents": 0, "interceptions": 0}
+        # 供实验脚本收集 agent 输出文本以计算联想/幻觉指标；None = 不收集（默认）。
+        self.agent_text_log = None
 
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         # 输出根目录可注入：优先 SINA_DATA_DIR（测试/多实例隔离），否则回落到仓库根。
@@ -496,6 +516,14 @@ class AgentThinkNode(DAGNode):
                     action_desc = intent.raw_action.get("observable_action", "")
                     print(f"    💭 {intent.agent_name}: {thought[:60]}...")
                     print(f"       → {action_desc[:60]}...")
+                    if sim.agent_text_log is not None:
+                        # 实验脚本用这批文本算联想/幻觉指标；默认 None，零开销。
+                        sim.agent_text_log.append({
+                            "tick": sim.tick_count,
+                            "agent": intent.agent_name,
+                            "thought": thought,
+                            "action": action_desc,
+                        })
                     intents.append(intent)
 
         return NodeResult(next_node="PhysicsSettle", payload={"current_intents": intents})
@@ -527,6 +555,11 @@ class PhysicsSettleNode(DAGNode):
         else:
             sim.current_logs = []
             print("    （本 tick 无行动需要结算）")
+
+        # 运行统计：U = 1 - interceptions/intents 的分母与分子都出自这里。
+        sim.stats["ticks"] += 1
+        sim.stats["intents"] += len(intents)
+        sim.stats["interceptions"] += sum(1 for line in sim.current_logs if "现实拦截" in line)
 
         # 资源 → 阶级 回写：结算完成后资源分布已更新，是唯一正确的采样点。
         # 默认关闭；SINA_MOBILITY=1 开启（见 core/social_mobility.py）。

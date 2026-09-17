@@ -34,6 +34,9 @@ worlds/*
 !worlds/stone_age/
 *backup.json
 
+# Experiment output (per-run trajectories & summaries) — generated, not source
+results/
+
 # Internal Roadmaps, Docs, Research Drafts & Scratch
 ROADMAP.md
 docs/
