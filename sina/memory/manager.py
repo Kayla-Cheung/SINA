@@ -38,6 +38,26 @@ class HierarchicalMemoryManager:
         self.default_token_threshold = default_token_threshold
         self._personas: Dict[str, PersonaInvariant] = {}
         self._bifurcation_managers: Dict[str, BifurcationManager] = {}
+        # 注册时显式给定的 token 预算基线 (阈值, 当时财富)。社会地位变动时
+        # 用它按财富比例重算，使「阶级更高 → token 预算更大」这条耦合在
+        # 动态流动下依然成立。
+        self._explicit_threshold: Dict[str, Optional[tuple]] = {}
+
+    def _compute_token_threshold(self, agent_id: str, persona: PersonaInvariant) -> int:
+        """按注册时的口径重算工作记忆 token 预算（供 register / 回写共用）。
+
+        · 注册时显式给过阈值 → 按财富变化比例缩放该阈值；
+        · 未显式给过       → 用 wealth_budget 驱动的默认公式。
+        """
+        base = self._explicit_threshold.get(agent_id)
+        if base is None:
+            return int(
+                self.default_token_threshold
+                * max(0.5, min(2.0, persona.wealth_budget / 1000.0))
+            )
+        base_threshold, base_wealth = base
+        scale = 1.0 if base_wealth <= 0 else max(0.0, persona.wealth_budget) / base_wealth
+        return int(round(base_threshold * scale))
 
     def register_agent(
         self,
@@ -48,18 +68,53 @@ class HierarchicalMemoryManager:
         agent_id = persona.agent_id
         self._personas[agent_id] = persona
 
-        # Dynamic token threshold based on wealth budget if not explicitly set
-        # Wealthier agents can maintain larger working contexts before forced compaction
-        threshold = token_threshold or int(
-            self.default_token_threshold * max(0.5, min(2.0, persona.wealth_budget / 1000.0))
+        # 显式阈值（falsy 视同未给，与旧 `token_threshold or ...` 语义一致）
+        self._explicit_threshold[agent_id] = (
+            (token_threshold, persona.wealth_budget) if token_threshold else None
         )
 
+        # Dynamic token threshold based on wealth budget if not explicitly set
+        # Wealthier agents can maintain larger working contexts before forced compaction
         self._bifurcation_managers[agent_id] = BifurcationManager(
             agent_id=agent_id,
             persona=persona,
             vector_store=self.vector_store,
-            token_threshold=threshold,
+            token_threshold=self._compute_token_threshold(agent_id, persona),
         )
+
+    def get_persona(self, agent_id: str) -> Optional[PersonaInvariant]:
+        """只读访问注册过的 persona（存档、观测器都用它取当前社会地位）。"""
+        return self._personas.get(agent_id)
+
+    def update_social_standing(
+        self,
+        agent_id: str,
+        class_index: Optional[float] = None,
+        wealth_budget: Optional[float] = None,
+    ) -> Optional[PersonaInvariant]:
+        """回写智能体的社会地位，并同步其工作记忆预算。
+
+        这是 PersonaInvariant 唯一的写入口，用来补上
+        ``class → 记忆保真度 → 行为 → 资源 → class`` 里此前缺失的最后一段。
+        Layer 0 名义上名为 "Invariant"（见 types.py 的 docstring），但没有任何
+        地方真正冻结它，因此这里显式地、集中地写，而不是让调用方各自改字段。
+
+        返回更新后的 persona；该 agent 未注册时返回 None。
+        """
+        persona = self._personas.get(agent_id)
+        if persona is None:
+            return None
+
+        if class_index is not None:
+            persona.class_index = float(max(0.0, min(1.0, class_index)))
+        if wealth_budget is not None:
+            persona.wealth_budget = float(max(0.0, wealth_budget))
+
+        bm = self._bifurcation_managers.get(agent_id)
+        if bm is not None:
+            bm.token_threshold = max(10, self._compute_token_threshold(agent_id, persona))
+
+        return persona
 
     def record_event(
         self,

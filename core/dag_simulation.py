@@ -29,6 +29,7 @@ try:
     from .agent_state import AgentState
     from .atomic_io import atomic_write_json
     from .constants import is_night as _is_night, season_index, TICK_MINUTES
+    from .social_mobility import SocialMobilityEngine, MobilityConfig
 except ImportError:
     from dag_engine import DAGEngine, DAGNode, NodeResult
     from action_lease import ActionInertiaEngine, infer_action_type
@@ -42,6 +43,7 @@ except ImportError:
     from agent_state import AgentState
     from atomic_io import atomic_write_json
     from constants import is_night as _is_night, season_index, TICK_MINUTES
+    from social_mobility import SocialMobilityEngine, MobilityConfig
 
 from sina.memory.manager import HierarchicalMemoryManager
 from sina.memory.types import PersonaInvariant, MemoryType
@@ -123,6 +125,10 @@ class SinaSimulation:
         # 核心挂载：行动租约状态机与分层记忆管理器
         self.action_inertia_engine = ActionInertiaEngine()
         self.memory_manager = HierarchicalMemoryManager()
+
+        # 社会流动引擎：补上 class → 记忆 → 行为 → 资源 → class 的最后一段。
+        # 默认关闭（SINA_MOBILITY 未设置时 enabled=False），因此不改变既有行为。
+        self.mobility = SocialMobilityEngine(MobilityConfig.from_env())
 
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         # 输出根目录可注入：优先 SINA_DATA_DIR（测试/多实例隔离），否则回落到仓库根。
@@ -288,6 +294,12 @@ class SinaSimulation:
             agent_dict = agent.to_dict()
             loc_node = self.environment.agent_locations.get(name)
             agent_dict["last_room"] = loc_node.name if loc_node else self._first_room_name()
+            # AgentState 里没有 class/wealth，只存在 PersonaInvariant 中；
+            # 不在这里显式落盘，读档就会回落成 0.5 / 100，把动态流动整个抹掉。
+            persona = self.memory_manager.get_persona(name)
+            if persona is not None:
+                agent_dict["class_index"] = persona.class_index
+                agent_dict["wealth"] = persona.wealth_budget
             agents_data.append(agent_dict)
 
         data = {
@@ -515,6 +527,10 @@ class PhysicsSettleNode(DAGNode):
         else:
             sim.current_logs = []
             print("    （本 tick 无行动需要结算）")
+
+        # 资源 → 阶级 回写：结算完成后资源分布已更新，是唯一正确的采样点。
+        # 默认关闭；SINA_MOBILITY=1 开启（见 core/social_mobility.py）。
+        sim.mobility.maybe_step(sim)
 
         return NodeResult(next_node="OracleJudge", payload={"current_intents": intents})
 
