@@ -15,10 +15,6 @@ interface Props {
       user: string
       raw_response: string
       character_response?: string
-      god_kind?: string
-      god_reason?: string
-      god_raw?: string
-      god_tool?: { tool: string; args: Record<string, unknown> } | null
     }>
   } | null>
 }
@@ -58,10 +54,6 @@ export function MemoryInspector({ gameState, getAgentMemories, getAgentPrompt }:
     user: string
     raw_response: string
     character_response?: string
-    god_kind?: string
-    god_reason?: string
-    god_raw?: string
-    god_tool?: { tool: string; args: Record<string, unknown> } | null
   } | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -89,10 +81,6 @@ export function MemoryInspector({ gameState, getAgentMemories, getAgentPrompt }:
           user: entry.user,
           raw_response: entry.raw_response,
           character_response: entry.character_response,
-          god_kind: entry.god_kind,
-          god_reason: entry.god_reason,
-          god_raw: entry.god_raw,
-          god_tool: entry.god_tool,
         })
       } else {
         setPromptData(null)
@@ -117,10 +105,13 @@ export function MemoryInspector({ gameState, getAgentMemories, getAgentPrompt }:
     else await loadPrompt(selectedAgent)
   }
 
+  // 首次挂载与每帧推进后都按当前标签刷新对应数据：此前 effect 只刷 prompt，
+  // 导致 Memory 标签页首屏空白、且永远停在首帧。依赖 gameState.frame 意味着
+  // 挂载时同样会触发一次，无需单独再写挂载 effect。
   useEffect(() => {
-    if (selectedAgent && tab === 'prompt') {
-      loadPrompt(selectedAgent)
-    }
+    if (!selectedAgent) return
+    if (tab === 'memory') loadMemories(selectedAgent)
+    else loadPrompt(selectedAgent)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState.frame])
 
@@ -219,7 +210,7 @@ export function MemoryInspector({ gameState, getAgentMemories, getAgentPrompt }:
           {promptData && (
             <>
               <p className="text-xs text-stone-500">
-                Frame {promptData.frame} — free-form intention + God mapping
+                Frame {promptData.frame} — character decision prompt
               </p>
               <div>
                 <h4 className="text-sm font-semibold text-emerald-800 mb-1">System</h4>
@@ -237,22 +228,6 @@ export function MemoryInspector({ gameState, getAgentMemories, getAgentPrompt }:
                 <h4 className="text-sm font-semibold text-emerald-700 mb-1">Character response</h4>
                 <pre className="text-[11px] leading-relaxed whitespace-pre-wrap bg-emerald-50 border border-emerald-200 rounded p-2 text-emerald-900 max-h-48 overflow-auto">
                   {promptData.character_response || promptData.raw_response}
-                </pre>
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold text-sky-800 mb-1">
-                  God decision{promptData.god_kind ? ` (${promptData.god_kind})` : ''}
-                </h4>
-                <pre className="text-[11px] leading-relaxed whitespace-pre-wrap bg-sky-50 border border-sky-200 rounded p-2 text-sky-900 max-h-48 overflow-auto">
-                  {[
-                    promptData.god_reason ? `Reason: ${promptData.god_reason}` : null,
-                    promptData.god_tool
-                      ? `Tool: ${promptData.god_tool.tool}(${JSON.stringify(promptData.god_tool.args)})`
-                      : 'Tool: (none)',
-                    promptData.god_raw ? `Raw:\n${promptData.god_raw}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join('\n\n') || '(no god data)'}
                 </pre>
               </div>
             </>

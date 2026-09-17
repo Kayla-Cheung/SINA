@@ -187,6 +187,9 @@ export function useGame() {
       return state
     } catch (e: any) {
       setError(e.message)
+      // 必须重新抛出：auto-step 的 runLoop 依赖这个 rejection 来终止循环，
+      // 否则后端持续失败时前端会以 3 秒为周期无限重试。
+      throw e
     } finally {
       steppingRef.current = false
       setLoading(false)
@@ -228,10 +231,6 @@ export function useGame() {
         user: string
         raw_response: string
         character_response?: string
-        god_kind?: string
-        god_reason?: string
-        god_raw?: string
-        god_tool?: { tool: string; args: Record<string, unknown> } | null
       }>
     }>(`/games/${gameId}/prompts?${q.toString()}`)
   }, [gameId])
@@ -273,26 +272,53 @@ export function useGame() {
     }
   }, [activateGame])
 
-  // WebSocket connection
+  // WebSocket connection: 订阅本局帧更新，断开后指数退避重连。
   useEffect(() => {
     if (!gameId) return
-    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/games/${gameId}`
-    const ws = new WebSocket(wsUrl)
-    wsRef.current = ws
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data)
-        if (msg.type === 'frame_update') {
-          refresh()
+    let disposed = false
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+    let ws: WebSocket | null = null
+
+    const connect = () => {
+      if (disposed) return
+      const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/games/${gameId}`
+      ws = new WebSocket(wsUrl)
+      wsRef.current = ws
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data)
+          // 后端已在 frame_update 里带完整 state，直接采用即可，避免再发一次
+          // GET，消除「旧 GET 晚到覆盖新帧」的乱序覆盖。
+          if (msg.type === 'frame_update' && msg.data) {
+            setGameState(msg.data)
+          }
+        } catch {
+          // 忽略无法解析的消息
         }
-      } catch {
-        // Ignore
+      }
+
+      ws.onclose = () => {
+        if (disposed) return
+        wsRef.current = null
+        if (retryTimer) clearTimeout(retryTimer)
+        retryTimer = setTimeout(connect, 2000)
       }
     }
+
+    connect()
+
     return () => {
-      ws.close()
+      disposed = true
+      if (retryTimer) clearTimeout(retryTimer)
+      if (ws) {
+        ws.onclose = null
+        ws.onmessage = null
+        ws.close()
+      }
+      wsRef.current = null
     }
-  }, [gameId, refresh])
+  }, [gameId])
 
   return {
     gameState,

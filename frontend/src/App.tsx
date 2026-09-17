@@ -22,7 +22,14 @@ function App() {
 
     const runLoop = async () => {
       while (!cancelled) {
-        await game.step(1)
+        try {
+          await game.step(1)
+        } catch {
+          // step 现在会 rethrow：后端持续失败时立刻停止 auto-step，
+          // 避免每 3 秒空转重试刷屏。
+          if (!cancelled) setAutoStep(false)
+          break
+        }
         if (cancelled) break
         await new Promise<void>((resolve) => {
           timer = setTimeout(resolve, 3000)
@@ -55,7 +62,11 @@ function App() {
 
   const handleStep = async (steps: number) => {
     setStepCount(steps)
-    await game.step(steps)
+    try {
+      await game.step(steps)
+    } catch {
+      // 错误已写入 game.error 并由底部横幅展示，此处吞掉以避免未处理的 rejection。
+    }
   }
 
   const handleExport = () => {

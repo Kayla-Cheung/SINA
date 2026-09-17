@@ -376,6 +376,10 @@ class GameSession:
         self.sim = sim
         self.game_id = game_id
         self.logs = list(logs or [])
+        # 每局独立保存最近一帧的 prompt 快照：prompt 记录来自网关单例，
+        # 必须拷贝进会话，否则换局后仍会读到上一局的陈旧 prompt。
+        self.prompts: dict = {}
+        self.prompt_frame: Optional[int] = None
 
     def snapshot(self) -> dict:
         return serialize_game_state(self.sim, self.game_id, self.logs)
@@ -405,6 +409,21 @@ class GameSession:
         }
         self.logs.append(entry)
         return entry
+
+    def capture_prompts(self, frame: int) -> None:
+        """把网关里本局智能体的 prompt 快照拷贝进会话，按 agent_id 隔离。
+
+        只收编本局真正在场的智能体（world_agents），避免上一局同名单例残留
+        串进本局（跨局污染）。
+        """
+        gw = get_gateway()
+        known = set(getattr(self.sim, "world_agents", None) or {})
+        self.prompts = {
+            agent_id: dict(entry)
+            for agent_id, entry in gw.agent_prompts.items()
+            if agent_id in known
+        }
+        self.prompt_frame = frame
 
 
 class SessionManager:
@@ -516,6 +535,8 @@ class SessionManager:
                 state = session.snapshot()
                 if on_frame:
                     await on_frame(state)
+            # 循环结束后一次性收编最近一帧的 prompt 快照，frame 即真实记录的 tick。
+            session.capture_prompts(frame=int(session.sim.tick_count))
         return {
             "frames_executed": steps,
             "results": results,
@@ -649,14 +670,16 @@ class SessionManager:
     def agent_prompts(self, game_id: str, agent_id: Optional[str] = None, frame: Optional[int] = None) -> dict:
         if not self.current or self.current.game_id != game_id:
             raise KeyError(game_id)
-        stored = dict(get_gateway().agent_prompts)
+        session = self.current
+        stored = dict(session.prompts)
         if agent_id:
             entry = stored.get(agent_id)
             prompts = {agent_id: entry} if entry else {}
         else:
             prompts = stored
         return {
-            "frame": frame if frame is not None else int(self.current.sim.tick_count),
+            # frame 不再回显当前 tick，而是该 prompt 实际被捕获的 tick。
+            "frame": session.prompt_frame,
             "prompts": prompts,
         }
 

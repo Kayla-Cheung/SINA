@@ -101,15 +101,14 @@ class AsyncLLMGateway:
         raw_response: str,
         character_response: str = "",
     ) -> None:
+        # 只记录真实走到的决策路径（determine_next_action → ActionSchema）。
+        # GodAgent 是另一套未接入 DAG 主循环的翻译层，这里不再写入永不落地的
+        # god_kind/god_reason/god_raw/god_tool 字段，避免仪表盘展示假数据。
         self.agent_prompts[agent_id] = {
             "system": system,
             "user": user,
             "raw_response": raw_response,
             "character_response": character_response,
-            "god_kind": None,
-            "god_reason": None,
-            "god_raw": None,
-            "god_tool": None,
         }
 
     def public_config(self) -> Dict[str, Any]:

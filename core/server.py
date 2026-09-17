@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -14,9 +15,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 try:
-    from core.game_session import build_template, get_manager
+    from core.game_session import build_template, get_manager, is_valid_game_id
 except ImportError:
-    from game_session import build_template, get_manager
+    from game_session import build_template, get_manager, is_valid_game_id
 
 app = FastAPI(title="SINA Stage 4 Dashboard API")
 
@@ -53,25 +54,38 @@ class StepIn(BaseModel):
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: list[WebSocket] = []
+        # 按 game_id 分桶：此前所有连接共用一张列表，step 广播会把 A 局的帧
+        # 推给 B 局的 WebSocket 客户端，导致跨局串流。
+        self._connections: dict[str, set[WebSocket]] = {}
+        self._lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, game_id: str):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        async with self._lock:
+            self._connections.setdefault(game_id, set()).add(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
+    async def disconnect(self, websocket: WebSocket, game_id: str):
+        async with self._lock:
+            bucket = self._connections.get(game_id)
+            if bucket is not None:
+                bucket.discard(websocket)
+                if not bucket:
+                    self._connections.pop(game_id, None)
 
-    async def broadcast(self, message: str):
-        stale = []
-        for connection in self.active_connections:
-            try:
-                await connection.send_text(message)
-            except Exception:
-                stale.append(connection)
-        for connection in stale:
-            self.disconnect(connection)
+    async def broadcast(self, game_id: str, message: str):
+        # 先取快照，再在锁外并发发送：既避免长时间持锁阻塞新连接，也避免串行
+        # await 让慢客户端拖慢整轮广播。
+        async with self._lock:
+            targets = list(self._connections.get(game_id, ()))
+        if not targets:
+            return
+        results = await asyncio.gather(
+            *(ws.send_text(message) for ws in targets),
+            return_exceptions=True,
+        )
+        stale = [ws for ws, res in zip(targets, results) if isinstance(res, BaseException)]
+        for ws in stale:
+            await self.disconnect(ws, game_id)
 
 
 manager = ConnectionManager()
@@ -119,7 +133,7 @@ async def get_game(game_id: str):
 async def step_game(game_id: str, body: Optional[StepIn] = None):
     req = body or StepIn()
     async def on_frame(state: dict):
-        await manager.broadcast(json.dumps({"type": "frame_update", "data": state}))
+        await manager.broadcast(game_id, json.dumps({"type": "frame_update", "data": state}))
 
     try:
         return await get_manager().step(game_id, steps=req.steps, on_frame=on_frame)
@@ -192,12 +206,15 @@ async def get_agent_memories(agent_id: str):
 
 @app.websocket("/ws/games/{game_id}")
 async def websocket_endpoint(websocket: WebSocket, game_id: str):
-    await manager.connect(websocket)
+    if not is_valid_game_id(game_id):
+        await websocket.close(code=1008)
+        return
+    await manager.connect(websocket, game_id)
     try:
         while True:
             _ = await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket, game_id)
 
 
 if __name__ == "__main__":
