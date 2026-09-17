@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import uuid
@@ -18,14 +19,18 @@ try:
     from core.action_lease import ActionInertiaEngine
     from core.environment import EnvNode, SandboxEnvironment
     from core.gateway import get_gateway, reconfigure_gateway
+    from core.atomic_io import atomic_write_json
 except ImportError:
     from dag_simulation import DAGSmallvilleSimulation
     from action_lease import ActionInertiaEngine
     from environment import EnvNode, SandboxEnvironment
     from gateway import get_gateway, reconfigure_gateway
+    from atomic_io import atomic_write_json
 
 from sina.memory.manager import HierarchicalMemoryManager
 from sina.memory.types import MemoryType
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 KNOWN_WORLDS = ("smallville", "stone_age")
@@ -333,14 +338,9 @@ def _clear_sim_population(sim) -> None:
 
 def load_world_into_sim(sim, world: dict) -> None:
     _clear_sim_population(sim)
-    tmp = saves_dir() / "_tmp_load.json"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(world, f, ensure_ascii=False)
-    try:
-        sim._load_world_state(str(tmp))
-    finally:
-        if tmp.exists():
-            tmp.unlink()
+    # 直接把 dict 灌进 sim：原先要落盘到固定的 _tmp_load.json，两个并发读档会互相
+    # 覆盖、或一个把另一个正要读的文件 unlink 掉。
+    sim._load_world_state_data(world)
 
 
 def persist_memories(sim, game_id: str) -> None:
@@ -348,7 +348,8 @@ def persist_memories(sim, game_id: str) -> None:
     try:
         sim.memory_manager.vector_store.persist_to_sqlite(str(db_path), game_id)
     except Exception:
-        pass
+        # 静默失败会让用户以为存过、读档却发现长期记忆是空的，必须留下痕迹
+        logger.exception("长期记忆持久化失败 (game_id=%s, db=%s)", game_id, db_path)
 
 
 def restore_memories(sim, game_id: str) -> None:
@@ -358,7 +359,7 @@ def restore_memories(sim, game_id: str) -> None:
     try:
         sim.memory_manager.vector_store.load_from_sqlite(str(db_path), game_id)
     except Exception:
-        pass
+        logger.exception("长期记忆恢复失败 (game_id=%s, db=%s)", game_id, db_path)
 
 
 class GameSession:
@@ -377,15 +378,14 @@ class GameSession:
             "saved_at": datetime.now(timezone.utc).isoformat(),
             "world_name": getattr(self.sim, "world_name", "smallville"),
             "world": extract_world(self.sim),
+            # logs 只存在 state 里（原先顶层再存一份，存档体积直接翻倍）。
+            # list_saves / _attach_from_payload 都已用 `or` 兼容旧格式的顶层 logs。
             "state": state,
-            "logs": self.logs,
         }
 
     def persist(self) -> None:
         payload = self.to_save_payload()
-        path = _save_path(self.game_id)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=2)
+        atomic_write_json(_save_path(self.game_id), payload)
         persist_memories(self.sim, self.game_id)
 
     def append_frame_log(self) -> dict:

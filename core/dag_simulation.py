@@ -27,6 +27,7 @@ try:
     from .environment import SandboxEnvironment
     from .laplace_oracle import LaplaceOracle
     from .agent_state import AgentState
+    from .atomic_io import atomic_write_json
 except ImportError:
     from dag_engine import DAGEngine, DAGNode, NodeResult
     from action_lease import ActionInertiaEngine
@@ -38,6 +39,7 @@ except ImportError:
     from environment import SandboxEnvironment
     from laplace_oracle import LaplaceOracle
     from agent_state import AgentState
+    from atomic_io import atomic_write_json
 
 from sina.memory.manager import HierarchicalMemoryManager
 from sina.memory.types import PersonaInvariant, MemoryType
@@ -138,6 +140,10 @@ class SinaSimulation:
     def _load_world_state(self, filename: str):
         with open(filename, "r", encoding="utf-8") as f:
             data = json.load(f)
+        self._load_world_state_data(data)
+
+    def _load_world_state_data(self, data: dict):
+        """接受已解析的 dict，供读档路径直接灌入，无需落临时文件。"""
         self.clock = datetime.fromisoformat(data["clock"])
         if "physics" in data:
             self.physics = PhysicsEngine.from_dict(data["physics"])
@@ -193,8 +199,7 @@ class SinaSimulation:
             "agents": agents_data,
             "tick_count": self.tick_count,
         }
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        atomic_write_json(filename, data)
 
 
 # ======================================================================

@@ -130,6 +130,9 @@ def test_saves_continue_delete_download_clear(client):
     assert payload["game_id"] == game_id
     assert "world" in payload
     assert payload.get("state", {}).get("frame", 0) >= 1
+    # logs 只保留在 state 内（顶层重复的那份已移除），读档依赖它还原时间线
+    assert payload["state"]["logs"], "state.logs 必须存在"
+    assert "logs" not in payload, "顶层不应再重复存一份 logs"
 
     client.post("/api/games/abandon")
     assert client.get("/api/games/current").json()["game_id"] is None
@@ -138,6 +141,7 @@ def test_saves_continue_delete_download_clear(client):
     assert continued.status_code == 200, continued.text
     assert continued.json()["game_id"] == game_id
     assert continued.json()["state"]["agents"]
+    assert continued.json()["state"]["logs"], "读档后帧日志必须保留"
 
     imported = client.post("/api/saves/import", json=payload)
     assert imported.status_code == 200, imported.text
