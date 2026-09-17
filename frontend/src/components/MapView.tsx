@@ -12,6 +12,19 @@ interface Props {
 
 /** Fixed layout positions for known sandbox locations (normalized 0-1). */
 const LAYOUT: Record<string, { x: number; y: number }> = {
+  // Smallville
+  Cafe: { x: 0.22, y: 0.38 },
+  Library: { x: 0.50, y: 0.22 },
+  Park: { x: 0.50, y: 0.55 },
+  Supermarket: { x: 0.78, y: 0.38 },
+  Hospital: { x: 0.78, y: 0.72 },
+  School: { x: 0.22, y: 0.72 },
+  // Stone age
+  Open_Plains: { x: 0.50, y: 0.35 },
+  Dark_Cave: { x: 0.22, y: 0.55 },
+  Dense_Forest: { x: 0.78, y: 0.55 },
+  Riverbank: { x: 0.35, y: 0.78 },
+  Hilltop: { x: 0.65, y: 0.18 },
   // SINA Sandbox (Vampire v3)
   loc_square: { x: 0.50, y: 0.42 },
   loc_park: { x: 0.28, y: 0.28 },

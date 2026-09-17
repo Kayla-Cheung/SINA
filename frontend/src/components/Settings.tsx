@@ -19,6 +19,10 @@ export function Settings({ onSave, getConfig, disabled }: Props) {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [hasStoredKey, setHasStoredKey] = useState(false)
+
+  const isMaskedSecret = (value?: string) =>
+    !value || value.includes('•') || value.startsWith('***')
 
   useEffect(() => {
     if (!getConfig) {
@@ -27,16 +31,21 @@ export function Settings({ onSave, getConfig, disabled }: Props) {
     }
     getConfig()
       .then((resp) => {
-        const c = resp.config
+        const c = resp.config as LLMConfig & { has_api_key?: boolean }
         if (c.base_url) setBaseUrl(c.base_url)
-        if (c.api_key) setApiKey(c.api_key)
+        if (c.api_key && !isMaskedSecret(c.api_key)) setApiKey(c.api_key)
         if (c.model) setModel(c.model)
         if (typeof c.thinking_enabled === 'boolean') setThinkingEnabled(c.thinking_enabled)
         if (c.embedding_base_url) setEmbeddingBaseUrl(c.embedding_base_url)
-        if (c.embedding_api_key) setEmbeddingApiKey(c.embedding_api_key)
+        if (c.embedding_api_key && !isMaskedSecret(c.embedding_api_key)) {
+          setEmbeddingApiKey(c.embedding_api_key)
+        }
         if (c.embedding_model) setEmbeddingModel(c.embedding_model)
         if (c.embedding_provider) setEmbeddingProvider(c.embedding_provider as 'google' | 'openai')
-        if (c.api_key) setMessage('Loaded saved API configuration.')
+        if (c.has_api_key || (c.api_key && isMaskedSecret(c.api_key))) {
+          setHasStoredKey(true)
+          setMessage('Loaded saved API configuration.')
+        }
       })
       .catch(() => {
         // No saved config yet — keep defaults
@@ -59,6 +68,9 @@ export function Settings({ onSave, getConfig, disabled }: Props) {
         thinking_enabled: thinkingEnabled,
       })
       setMessage('Configuration saved. It will auto-load next time.')
+      if (apiKey) {
+        setHasStoredKey(true)
+      }
     } catch (e: any) {
       setMessage(`Error: ${e.message}`)
     } finally {
@@ -183,7 +195,7 @@ export function Settings({ onSave, getConfig, disabled }: Props) {
 
       <button
         onClick={handleSave}
-        disabled={disabled || saving || !apiKey || !embeddingApiKey}
+        disabled={disabled || saving || (!apiKey && !hasStoredKey)}
         className="w-full bg-accent hover:bg-stone-800 disabled:bg-stone-300 text-white py-2 rounded font-medium transition"
       >
         {saving ? 'Saving...' : 'Save Configuration'}

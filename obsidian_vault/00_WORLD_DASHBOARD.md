@@ -1,7 +1,7 @@
 ---
 type: dashboard
-tick: 0
-clock: "2026-01-01 06:00"
+tick: 1
+clock: "2026-01-01 08:00"
 tags: [dashboard, ssot_root]
 ---
 
@@ -9,18 +9,18 @@ tags: [dashboard, ssot_root]
 
 | 指标项 | 状态与数值 |
 | :--- | :--- |
-| **仿真步数 (Tick)** | `Tick 0` |
-| **世界时间** | `2026-01-01 06:00` (🌸 春季 (Spring)) |
+| **仿真步数 (Tick)** | `Tick 1` |
+| **世界时间** | `2026-01-01 08:00` (🌸 春季 (Spring)) |
 | **人口生态** | 🟢 存活 `6` | 🟡 昏迷 `0` | 🔴 死亡 `0` |
 | **空间节点数** | `6` 个房间 |
 
 ## 👥 智能体花名册 (Roster)
-- [[Agents/Isabella]] (`发呆中`)
-- [[Agents/Tom]] (`发呆中`)
-- [[Agents/Klaus]] (`发呆中`)
-- [[Agents/Maria]] (`发呆中`)
-- [[Agents/Sam]] (`发呆中`)
-- [[Agents/Ryan]] (`发呆中`)
+- [[Agents/Isabella]] (`站在原地观察小镇`)
+- [[Agents/Tom]] (`站在原地观察小镇`)
+- [[Agents/Klaus]] (`站在原地观察小镇`)
+- [[Agents/Maria]] (`站在原地观察小镇`)
+- [[Agents/Sam]] (`站在原地观察小镇`)
+- [[Agents/Ryan]] (`站在原地观察小镇`)
 
 ## 🏛️ 空间拓扑 (Spatial Grid)
 - [[Rooms/Cafe]] (在场: 2人)

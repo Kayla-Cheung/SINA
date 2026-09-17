@@ -250,15 +250,32 @@ async def determine_next_action(
 
     from action_intent import ActionSchema
 
+    user_prompt = "根据当前处境，决定你下一步的行动。"
     action_obj = await gateway.generate_structured(
         system_prompt=system_prompt,
-        user_prompt="根据当前处境，决定你下一步的行动。",
+        user_prompt=user_prompt,
         response_model=ActionSchema,
         temperature=0.75
     )
 
+    character_response = ""
+    dumped = None
     if action_obj:
-        return action_obj.model_dump()
+        dumped = action_obj.model_dump() if hasattr(action_obj, "model_dump") else action_obj.dict()
+        character_response = dumped.get("observable_action", "")
+    try:
+        gateway.record_agent_prompt(
+            agent_id=state.name,
+            system=getattr(gateway, "last_system_prompt", system_prompt),
+            user=getattr(gateway, "last_user_prompt", user_prompt),
+            raw_response=getattr(gateway, "last_raw_response", "") or "",
+            character_response=character_response,
+        )
+    except Exception:
+        pass
+
+    if dumped is not None:
+        return dumped
 
     print(f"  ⚠ [{state.name}] Gateway 决策失败，触发安全兜底")
     return _fallback_action(state)

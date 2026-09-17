@@ -114,15 +114,21 @@ python sandboxes/run_obsidian_simulation.py
 
 ### 4. Alternative: Launch Web Server & Dashboard
 ```bash
-# Terminal 1: Launch Backend Engine
-cd core
-python server.py
+# Terminal 1: Launch Backend Engine (from repo root, or `cd core && python server.py`)
+python core/server.py
 
 # Terminal 2: Launch Frontend Observer Dashboard
 cd frontend
 npm install
 npm run dev
 ```
+
+Open the Vite URL (default http://localhost:5173). Configure a chat LLM API key if you have one, then **Create Game**. The dashboard does not start a simulation until you create or continue a save.
+
+Use **Step** / **Auto-step** to advance the existing DAG tick loop. Each step waits until that tick finishes (including any LLM calls) before the map updates. Games autosave under `data/saves/` after every tick. Export downloads the same JSON that **Import save JSON** accepts.
+
+Without an API key, create/step still work at the HTTP layer; agent decisions follow the existing engine fallback when the LLM call fails.
+
 
 ---
 

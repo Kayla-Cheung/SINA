@@ -18,6 +18,8 @@ ENV/
 *.sqlite3
 logs/
 .DS_Store
+data/saves/
+data/llm_config.json
 
 # Frontend & Dependencies
 node_modules/

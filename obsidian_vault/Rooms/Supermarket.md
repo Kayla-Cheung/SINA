@@ -11,9 +11,9 @@ tags: [room, place, spatial_node]
 - *(空无一人)*
 
 ## 📦 空间物资 (Inventory)
-- **BREAD** × 50
+- **BREAD** × 47
 - **WATER** × 100
-- **APPLE** × 30
+- **APPLE** × 26
 
 ## 🚪 连通区域 (Connected Portals)
 - [[Rooms/Cafe]]

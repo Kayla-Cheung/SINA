@@ -12,8 +12,8 @@ tags: [room, place, spatial_node]
 - [[Agents/Sam]]
 
 ## 📦 空间物资 (Inventory)
-- **COFFEE** × 50
-- **PASTRY** × 20
+- **COFFEE** × 51
+- **PASTRY** × 18
 
 ## 🚪 连通区域 (Connected Portals)
 - [[Rooms/Library]]
