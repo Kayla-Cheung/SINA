@@ -317,6 +317,11 @@ async def settle_all_intents(
                     feedback_events.append(f"[物理现实] 你想去 {move_to}，但被 {dest.locked_by} 封锁了。")
                 else:
                     environment.move_agent(agent_name, dest)
+                    # 维护社交圈：抵达新房间后，同室的人进入"已知"集合。
+                    # 该字段此前全仓库无人写入，观察器的"视野内社交圈"恒为空。
+                    known_nearby = getattr(agent, "known_nearby", None)
+                    if known_nearby is not None:
+                        known_nearby.update(dest.agents)
                     logs.append(f"  [移动] {agent_name} 移动到 {dest.name}")
 
         # ────────────────────────────────────

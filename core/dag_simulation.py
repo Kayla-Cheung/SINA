@@ -184,6 +184,22 @@ class SinaSimulation:
             )
         return nodes[0].name
 
+    def _place_agent(self, agent, node) -> None:
+        """把智能体安置进房间，并同步双方的社交圈。
+
+        known_nearby 此前全仓库无人写入（只有 to_dict/from_dict 读写），
+        观察器的"视野内社交圈"因此恒为空、星图没有社会关系边。
+        同处一室即视为"已知"。
+        """
+        self.environment.spawn_agent(agent.name, node)
+        agent.known_nearby.update(n for n in node.agents if n != agent.name)
+        for other_name in node.agents:
+            if other_name == agent.name:
+                continue
+            other = self.world_agents.get(other_name)
+            if other is not None:
+                other.known_nearby.add(agent.name)
+
     def _load_world_state(self, filename: str):
         with open(filename, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -206,10 +222,9 @@ class SinaSimulation:
             self._register_agent_memory(agent.name, agent_data)
             last_room = agent_data.get("last_room") or self._first_room_name()
             node = self.environment.get_node_by_name(last_room)
-            if node:
-                self.environment.spawn_agent(agent.name, node)
-            else:
-                self.environment.spawn_agent(agent.name, self.environment.get_node_by_name(self._first_room_name()))
+            if node is None:
+                node = self.environment.get_node_by_name(self._first_room_name())
+            self._place_agent(agent, node)
         self.tick_count = data.get("tick_count", 0)
 
     def _load_from_config(self, config_path: str):
@@ -230,10 +245,9 @@ class SinaSimulation:
 
             start_room = agent_cfg.get("start_room") or self._first_room_name()
             node = self.environment.get_node_by_name(start_room)
-            if node:
-                self.environment.spawn_agent(agent.name, node)
-            else:
-                self.environment.spawn_agent(agent.name, self.environment.get_node_by_name(self._first_room_name()))
+            if node is None:
+                node = self.environment.get_node_by_name(self._first_room_name())
+            self._place_agent(agent, node)
 
     def save_world_state(self, filename: Optional[str] = None):
         agents_data = []

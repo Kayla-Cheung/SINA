@@ -8,6 +8,7 @@ force-directed graph visualization in Obsidian.
 import os
 import json
 import logging
+import re
 from typing import Dict, List, Optional, Any
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,19 @@ class ObsidianVaultObserver:
         self.memories_dir = os.path.join(self.vault_dir, "Memories")
         self.events_dir = os.path.join(self.vault_dir, "Events")
         self._ensure_directories()
+
+    @staticmethod
+    def _memory_file_name(agent_name: str, memory: Any) -> str:
+        """给情景记忆节点取一个唯一文件名。
+
+        只用 tick 区间命名会撞车：同一 tick 内 settlement 会写多条 record_event，
+        bifurcation 切分出的多个 episode 的 tick_start/tick_end 恰好相同，于是多张
+        卡片写向同一路径、静默互相覆盖。memory_id 自带 uuid 后缀，用它去重。
+        """
+        raw_id = str(getattr(memory, "memory_id", "") or "")
+        safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", raw_id)[-24:]
+        suffix = f"_{safe_id}" if safe_id else ""
+        return f"Mem_{agent_name}_{memory.tick_start}_{memory.tick_end}{suffix}"
 
     def _write_if_changed(self, file_path: str, content: str) -> bool:
         """Write content only if changed or file does not exist. Returns True if written."""
@@ -202,8 +216,12 @@ class ObsidianVaultObserver:
                 inv_links = [f"- [[Items/{k}]] × {v}" for k, v in agent.inventory.items() if v > 0]
             inv_block = "\n".join(inv_links) if inv_links else "- *(空手)*"
 
-            # Social nearby links
-            nearby_links = [f"- [[Agents/{n}]]" for n in agent.known_nearby if n != name]
+            # Social nearby links：同房间的人 + 该智能体已知的人。
+            # known_nearby 与 node.agents 都是 set：迭代顺序不稳定会让 dirty-check
+            # 每 tick 都误判"内容已变"而重复写文件，故排序后再渲染。
+            nearby_names = set(agent.known_nearby) | set(loc_node.agents if loc_node else [])
+            nearby_names.discard(name)
+            nearby_links = [f"- [[Agents/{n}]]" for n in sorted(nearby_names)]
             nearby_block = "\n".join(nearby_links) if nearby_links else "- *(孤身一人)*"
 
             # Memory notes & links
@@ -212,7 +230,7 @@ class ObsidianVaultObserver:
                 agent_memories = memory_manager.vector_store.get_agent_memories(name)
                 for mem in agent_memories[-5:]:  # show recent 5 memories
                     if not self.macro_only:
-                        mem_file_name = f"Mem_{name}_{mem.tick_start}_{mem.tick_end}"
+                        mem_file_name = self._memory_file_name(name, mem)
                         self._write_single_memory(mem, mem_file_name)
                         confab_tag = " ⚠️(脑补)" if mem.is_confabulated else ""
                         memory_links.append(f"- [[Memories/{mem_file_name}]]{confab_tag}: {mem.summary[:40]}...")
@@ -280,7 +298,7 @@ class ObsidianVaultObserver:
             f"is_confabulated: {confab_str}\n"
             f"tags: [memory, episodic{' ,confabulation' if memory.is_confabulated else ''}]\n"
             f"---\n\n"
-            f"# 🧠 情景记忆：{file_name}\n\n"
+            f"# 🧠 情景记忆：{memory.agent_id} · T{memory.tick_start}-T{memory.tick_end}\n\n"
             f"- **归属主体**：[[Agents/{memory.agent_id}]]\n"
             f"- **发生地点**：[[Rooms/{memory.location}]]\n"
             f"- **时间范围**：`Tick {memory.tick_start} ~ {memory.tick_end}`\n"
