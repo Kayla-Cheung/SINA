@@ -7,7 +7,14 @@ force-directed graph visualization in Obsidian.
 
 import os
 import json
+import logging
 from typing import Dict, List, Optional, Any
+
+logger = logging.getLogger(__name__)
+
+# 写在每份生成笔记的 frontmatter 里，用于识别"这是本观察器托管的内容"。
+# 清理 stale 笔记时只删除带此标记的文件，避免误删用户 vault 里的自建笔记。
+MANAGED_MARKER = "sina_managed: true"
 
 
 class ObsidianVaultObserver:
@@ -44,6 +51,35 @@ class ObsidianVaultObserver:
             f.write(content)
         return True
 
+    def _remove_stale(self, directory: str, keep: set) -> None:
+        """删除该目录下不再需要的托管笔记。
+
+        只删除带 MANAGED_MARKER 的文件：vault_dir 常被指向用户真实的 Obsidian 库，
+        无条件 os.remove 会永久删掉用户自建的笔记。
+        """
+        if not os.path.isdir(directory):
+            return
+        for fname in os.listdir(directory):
+            if not fname.endswith(".md") or fname in keep:
+                continue
+            path = os.path.join(directory, fname)
+            if not self._is_managed(path):
+                continue
+            try:
+                os.remove(path)
+            except OSError:
+                logger.warning("无法删除过期笔记: %s", path, exc_info=True)
+
+    @staticmethod
+    def _is_managed(path: str) -> bool:
+        """判断文件是否由本观察器生成（读文件头即可，无需解析全文）。"""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                head = f.read(4096)
+        except OSError:
+            return False
+        return MANAGED_MARKER in head
+
     def _ensure_directories(self) -> None:
         """Create standard folder layout inside the vault and purge micro files if macro_only."""
         for d in [self.agents_dir, self.rooms_dir]:
@@ -58,10 +94,13 @@ class ObsidianVaultObserver:
                 if os.path.exists(d):
                     for fname in os.listdir(d):
                         if fname.endswith(".md"):
+                            path = os.path.join(d, fname)
+                            if not self._is_managed(path):
+                                continue
                             try:
-                                os.remove(os.path.join(d, fname))
-                            except Exception:
-                                pass
+                                os.remove(path)
+                            except OSError:
+                                logger.warning("无法清理微观笔记: %s", path, exc_info=True)
 
     def sync_tick(
         self,
@@ -89,12 +128,7 @@ class ObsidianVaultObserver:
 
         # Clean up stale room notes from previous world runs
         current_room_files = {f"{node.name}.md" for node in all_nodes}
-        for existing in os.listdir(self.rooms_dir):
-            if existing.endswith(".md") and existing not in current_room_files:
-                try:
-                    os.remove(os.path.join(self.rooms_dir, existing))
-                except Exception:
-                    pass
+        self._remove_stale(self.rooms_dir, current_room_files)
 
         for node in all_nodes:
             file_path = os.path.join(self.rooms_dir, f"{node.name}.md")
@@ -134,6 +168,7 @@ class ObsidianVaultObserver:
             content = (
                 f"---\n"
                 f"type: room\n"
+                f"{MANAGED_MARKER}\n"
                 f"room_name: {node.name}\n"
                 f"occupant_count: {len(agents_in_room)}\n"
                 f"tags: [room, place, spatial_node]\n"
@@ -153,12 +188,7 @@ class ObsidianVaultObserver:
         """Render each agent with links to current room, inventory, allies, and memory nodes."""
         # Clean up stale agent notes from previous world runs
         current_agent_files = {f"{name}.md" for name in sim.world_agents.keys()}
-        for existing in os.listdir(self.agents_dir):
-            if existing.endswith(".md") and existing not in current_agent_files:
-                try:
-                    os.remove(os.path.join(self.agents_dir, existing))
-                except Exception:
-                    pass
+        self._remove_stale(self.agents_dir, current_agent_files)
 
         for name, agent in sim.world_agents.items():
             file_path = os.path.join(self.agents_dir, f"{name}.md")
@@ -208,6 +238,7 @@ class ObsidianVaultObserver:
             content = (
                 f"---\n"
                 f"type: agent\n"
+                f"{MANAGED_MARKER}\n"
                 f"name: {name}\n"
                 f"status: {status_str}\n"
                 f"hunger: {agent.hunger}\n"
@@ -241,6 +272,7 @@ class ObsidianVaultObserver:
         content = (
             f"---\n"
             f"type: memory\n"
+            f"{MANAGED_MARKER}\n"
             f"agent: \"[[Agents/{memory.agent_id}]]\"\n"
             f"location: \"[[Rooms/{memory.location}]]\"\n"
             f"ticks: \"T{memory.tick_start}-T{memory.tick_end}\"\n"
@@ -282,6 +314,7 @@ class ObsidianVaultObserver:
             content = (
                 f"---\n"
                 f"type: item\n"
+                f"{MANAGED_MARKER}\n"
                 f"item_tag: {tag}\n"
                 f"nutrition: {nutrition}\n"
                 f"spoil_rate: {spoil_rate}\n"
@@ -319,6 +352,7 @@ class ObsidianVaultObserver:
             content = (
                 f"---\n"
                 f"type: event\n"
+                f"{MANAGED_MARKER}\n"
                 f"tick: {tick}\n"
                 f"time: \"{sim.clock.strftime('%Y-%m-%d %H:%M')}\"\n"
                 f"tags: [event, tick_log]\n"
@@ -371,6 +405,7 @@ class ObsidianVaultObserver:
         content = (
             f"---\n"
             f"type: dashboard\n"
+            f"{MANAGED_MARKER}\n"
             f"tick: {sim.tick_count}\n"
             f"clock: \"{sim.clock.strftime('%Y-%m-%d %H:%M')}\"\n"
             f"tags: [dashboard, ssot_root]\n"

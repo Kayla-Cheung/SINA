@@ -64,7 +64,13 @@ class DualLogger:
 
 
 class SinaSimulation:
-    def __init__(self, world_name: str = "smallville", resume: Optional[bool] = None):
+    def __init__(
+        self,
+        world_name: str = "smallville",
+        resume: Optional[bool] = None,
+        save_file: Optional[str] = None,
+        vault_dir: Optional[str] = None,
+    ):
         self.terminal = sys.stdout
         self.world_name = world_name
         self.environment = SandboxEnvironment(world_name=world_name)
@@ -77,6 +83,11 @@ class SinaSimulation:
         self.memory_manager = HierarchicalMemoryManager()
 
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # 输出根目录可注入：优先 SINA_DATA_DIR（测试/多实例隔离），否则回落到仓库根。
+        # 原先 save_file 是按 CWD 解析的相对路径、vault 固定写仓库根，导致从仓库根
+        # 跑测试会覆盖真实存档并持续改写 obsidian_vault/。
+        self.data_root = os.environ.get("SINA_DATA_DIR") or base_dir
+        os.makedirs(self.data_root, exist_ok=True)
         prompt_path = os.path.join(base_dir, "worlds", world_name, "config", "prompt.json")
         if os.path.exists(prompt_path):
             with open(prompt_path, "r", encoding="utf-8") as f:
@@ -88,13 +99,14 @@ class SinaSimulation:
         self.clock = datetime(2026, 1, 1, 6, 0)
         self.active_proposal = [None]
         self.world_agents = {}
-        self.save_file = "world_state_v3_backup.json"
+        self.save_file = save_file or os.path.join(self.data_root, "world_state_v3_backup.json")
         self.tick_count = 0
         self.current_logs = []
 
         # 挂载 Obsidian 原生图谱观测器
-        vault_dir = os.path.join(base_dir, "obsidian_vault")
-        self.observer = ObsidianVaultObserver(vault_dir=vault_dir)
+        self.observer = ObsidianVaultObserver(
+            vault_dir=vault_dir or os.path.join(self.data_root, "obsidian_vault")
+        )
 
         agents_path = os.path.join(base_dir, "worlds", world_name, "config", "agents.json")
         if (resume is not False) and os.path.exists(self.save_file):
@@ -184,7 +196,7 @@ class SinaSimulation:
             else:
                 self.environment.spawn_agent(agent.name, self.environment.get_node_by_name(self._first_room_name()))
 
-    def save_world_state(self, filename: str = "world_state_v3_backup.json"):
+    def save_world_state(self, filename: Optional[str] = None):
         agents_data = []
         for name, agent in self.world_agents.items():
             agent_dict = agent.to_dict()
@@ -199,7 +211,7 @@ class SinaSimulation:
             "agents": agents_data,
             "tick_count": self.tick_count,
         }
-        atomic_write_json(filename, data)
+        atomic_write_json(filename or self.save_file, data)
 
 
 # ======================================================================
