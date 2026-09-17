@@ -6,6 +6,7 @@ archetype / class_index / wealth 三个人格分层字段。
 """
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 from core.constants import (
@@ -15,6 +16,7 @@ from core.constants import (
     is_night,
     season_index,
 )
+from core.dag_simulation import SEASON_NAMES, SinaSimulation
 
 
 def test_is_night_boundaries():
@@ -29,6 +31,40 @@ def test_season_index_uses_single_tick_length():
     assert season_index(SEASON_TICK_LENGTH - 1) == 0
     assert season_index(SEASON_TICK_LENGTH) == 1
     assert season_index(SEASON_TICK_LENGTH * 4) == 0
+
+
+def _bare_sim():
+    """跳过 __init__ 构造最小模拟器实例，仅注入 _tick_header/_enter_tick 所需字段。
+
+    不加载世界配置 / 观察器 / 存档，避免测试产生副作用。
+    """
+    sim = SinaSimulation.__new__(SinaSimulation)
+    sim.clock = datetime(2026, 1, 1, 6, 0)
+    sim.tick_count = 0
+    return sim
+
+
+def test_tick_header_uses_real_season_not_fake_weather():
+    sim = _bare_sim()
+    sim.tick_count = SEASON_TICK_LENGTH  # 第二个季节（盛夏）
+
+    header = sim._tick_header()
+
+    assert f"季节: {SEASON_NAMES[season_index(SEASON_TICK_LENGTH)]}" in header
+    # 伪天气（tick % 7）已被真实季节取代
+    assert "天气" not in header
+    assert "阴沉" not in header and "晴朗" not in header
+
+
+def test_enter_tick_is_single_tick_counter():
+    sim = _bare_sim()
+    before_clock = sim.clock
+
+    sim._enter_tick()
+
+    assert sim.tick_count == 1
+    # 时钟推进不属于 _enter_tick 的职责（归 ClockTickNode 帧边界），二者各单一来源
+    assert sim.clock == before_clock
 
 
 def test_smallville_hunger_within_scale_and_persona_fields():

@@ -28,7 +28,7 @@ try:
     from .laplace_oracle import LaplaceOracle
     from .agent_state import AgentState
     from .atomic_io import atomic_write_json
-    from .constants import is_night as _is_night, season_index
+    from .constants import is_night as _is_night, season_index, TICK_MINUTES
 except ImportError:
     from dag_engine import DAGEngine, DAGNode, NodeResult
     from action_lease import ActionInertiaEngine, infer_action_type
@@ -41,11 +41,16 @@ except ImportError:
     from laplace_oracle import LaplaceOracle
     from agent_state import AgentState
     from atomic_io import atomic_write_json
-    from constants import is_night as _is_night, season_index
+    from constants import is_night as _is_night, season_index, TICK_MINUTES
 
 from sina.memory.manager import HierarchicalMemoryManager
 from sina.memory.types import PersonaInvariant, MemoryType
 from sina.observer.obsidian_vault import ObsidianVaultObserver
+
+# 季节显示名，与 constants.season_index 的 0..3 一一对应。
+# 此前 EnvTick 与 tick 头部各维护一份季节列表、且头部用 tick%7 造伪天气，
+# 这里收敛为唯一权威来源（真实季节替代伪天气）。
+SEASON_NAMES = ["春生", "盛夏", "秋收", "凛冬"]
 
 
 def serialize_node_states(environment) -> list:
@@ -157,6 +162,32 @@ class SinaSimulation:
             print(f"✅ 从存档 {self.save_file} 恢复世界状态")
         else:
             print(f"⚠ 未找到存档或配置文件，请检查 {agents_path}")
+
+    def _tick_header(self) -> str:
+        """生成当前 tick 的统一头部（时间 / 昼夜 / 季节）。
+
+        此前头部在 run_dag_loop 与 ClockTickNode 两处重复拼装，且天气用
+        `tick_count % 7` 造伪值。这里收敛为单一来源，季节取真实 season_index，
+        不再伪造天气。
+        """
+        time_str = self.clock.strftime("%Y-%m-%d %H:%M")
+        is_night = _is_night(self.clock.hour)
+        period = "🌙 夜晚" if is_night else "☀ 白天"
+        season = SEASON_NAMES[season_index(self.tick_count)]
+        return (
+            f"\n{'─' * 60}\n"
+            f"  ⏱ Tick {self.tick_count} | {time_str} | {period} | 季节: {season} (DAG Engine)\n"
+            f"{'─' * 60}"
+        )
+
+    def _enter_tick(self) -> None:
+        """tick 计数的唯一推进点：自增并打印该 tick 的统一头部。
+
+        时钟推进（clock += TICK_MINUTES）只在 ClockTickNode 的帧边界发生，
+        二者各自单一来源，避免散落的自增造成 clock/tick 失步（见 #31、#51）。
+        """
+        self.tick_count += 1
+        print(self._tick_header())
 
     def _register_agent_memory(self, name: str, agent_cfg: dict):
         """将智能体注册到分层阶层记忆系统中"""
@@ -287,8 +318,7 @@ class EnvTickNode(DAGNode):
             if not agent.is_dead:
                 sim.physics.resolve_spoilage(agent.inventory)
 
-        seasons = ["春生", "盛夏", "秋收", "凛冬"]
-        current_season = seasons[season_index(sim.tick_count)]
+        current_season = SEASON_NAMES[season_index(sim.tick_count)]
         state["current_season"] = current_season
 
         # 商业节点资源补给 (如 Cafe, Supermarket)
@@ -612,7 +642,7 @@ class ClockTickNode(DAGNode):
         sim = state["sim"]
         target_ticks = state["target_ticks"]
 
-        sim.clock += timedelta(minutes=15)
+        sim.clock += timedelta(minutes=TICK_MINUTES)
         sim.save_world_state()
         print(f"\n  💾 存档完成 | 下一 tick: {sim.clock.strftime('%H:%M')}")
 
@@ -622,15 +652,7 @@ class ClockTickNode(DAGNode):
         print(f"  👥 存活: {alive} | 昏迷: {comatose} | 死亡: {dead}")
 
         if sim.tick_count < target_ticks:
-            sim.tick_count += 1
-            time_str = sim.clock.strftime("%Y-%m-%d %H:%M")
-            is_night = _is_night(sim.clock.hour)
-            period = "🌙 夜晚" if is_night else "☀ 白天"
-            weather = "阴沉" if sim.tick_count % 7 == 0 else "晴朗"
-
-            print(f"\n{'─' * 60}")
-            print(f"  ⏱ Tick {sim.tick_count} | {time_str} | {period} | 天气: {weather} (DAG Engine)")
-            print(f"{'─' * 60}")
+            sim._enter_tick()
             return NodeResult(next_node="EnvTick")
         else:
             return NodeResult(next_node=None)
@@ -662,15 +684,7 @@ class DAGSmallvilleSimulation(SinaSimulation):
         if ticks > 0:
             before_tick = self.tick_count
             before_clock = self.clock
-            self.tick_count += 1
-            time_str = self.clock.strftime("%Y-%m-%d %H:%M")
-            is_night = _is_night(self.clock.hour)
-            period = "🌙 夜晚" if is_night else "☀ 白天"
-            weather = "阴沉" if self.tick_count % 7 == 0 else "晴朗"
-
-            print(f"\n{'─' * 60}")
-            print(f"  ⏱ Tick {self.tick_count} | {time_str} | {period} | 天气: {weather} (DAG Engine)")
-            print(f"{'─' * 60}")
+            self._enter_tick()
 
             try:
                 await engine.run(
