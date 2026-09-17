@@ -122,6 +122,19 @@ class SinaSimulation:
         )
         self.memory_manager.register_agent(p, token_threshold=max(5, int(wealth / 20.0)))
 
+    def _first_room_name(self) -> str:
+        """惰性取首个房间名。
+
+        不能写成 `cfg.get("start_room", self.environment.all_nodes()[0].name)`：
+        Python 会先求值默认参数再进 get，空地图时即使配置里有 start_room 也会 IndexError。
+        """
+        nodes = self.environment.all_nodes()
+        if not nodes:
+            raise ValueError(
+                f"世界 '{self.world_name}' 的地图为空（map.json 缺失或损坏），无法安置智能体。"
+            )
+        return nodes[0].name
+
     def _load_world_state(self, filename: str):
         with open(filename, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -134,12 +147,12 @@ class SinaSimulation:
             agent = AgentState.from_dict(agent_data)
             self.world_agents[agent.name] = agent
             self._register_agent_memory(agent.name, agent_data)
-            last_room = agent_data.get("last_room", self.environment.all_nodes()[0].name)
+            last_room = agent_data.get("last_room") or self._first_room_name()
             node = self.environment.get_node_by_name(last_room)
             if node:
                 self.environment.spawn_agent(agent.name, node)
             else:
-                self.environment.spawn_agent(agent.name, self.environment.all_nodes()[0])
+                self.environment.spawn_agent(agent.name, self.environment.get_node_by_name(self._first_room_name()))
         self.tick_count = data.get("tick_count", 0)
 
     def _load_from_config(self, config_path: str):
@@ -158,19 +171,19 @@ class SinaSimulation:
             self.world_agents[agent.name] = agent
             self._register_agent_memory(agent.name, agent_cfg)
 
-            start_room = agent_cfg.get("start_room", self.environment.all_nodes()[0].name)
+            start_room = agent_cfg.get("start_room") or self._first_room_name()
             node = self.environment.get_node_by_name(start_room)
             if node:
                 self.environment.spawn_agent(agent.name, node)
             else:
-                self.environment.spawn_agent(agent.name, self.environment.all_nodes()[0])
+                self.environment.spawn_agent(agent.name, self.environment.get_node_by_name(self._first_room_name()))
 
     def save_world_state(self, filename: str = "world_state_v3_backup.json"):
         agents_data = []
         for name, agent in self.world_agents.items():
             agent_dict = agent.to_dict()
             loc_node = self.environment.agent_locations.get(name)
-            agent_dict["last_room"] = loc_node.name if loc_node else self.environment.all_nodes()[0].name
+            agent_dict["last_room"] = loc_node.name if loc_node else self._first_room_name()
             agents_data.append(agent_dict)
 
         data = {
@@ -191,6 +204,9 @@ class SinaSimulation:
 class EnvTickNode(DAGNode):
     async def execute(self, state):
         sim = state["sim"]
+        # 每个 tick 起始清空日志缓冲：若本帧中途失败，帧日志应为空，
+        # 而不是复用上一帧残留的 current_logs（会造成时间线重复事件）。
+        sim.current_logs = []
         print("\n  🌱 Phase 0: 环境生息 [DAG算子]")
         for node in sim.environment.all_nodes():
             sim.physics.resolve_spoilage(node.inventory)
@@ -261,7 +277,7 @@ class AgentThinkNode(DAGNode):
                 continue
 
             loc_node = sim.environment.agent_locations.get(name)
-            current_room = loc_node.name if loc_node else sim.environment.all_nodes()[0].name
+            current_room = loc_node.name if loc_node else sim._first_room_name()
 
             # 3. 行动租约与突发中断矩阵评估 (Action Inertia Engine)
             need_think, wake_reason, active_lease = sim.action_inertia_engine.evaluate_agent_lease(
@@ -569,6 +585,8 @@ class DAGSmallvilleSimulation(SinaSimulation):
         engine.register_node(ClockTickNode("ClockTick"))
 
         if ticks > 0:
+            before_tick = self.tick_count
+            before_clock = self.clock
             self.tick_count += 1
             time_str = self.clock.strftime("%Y-%m-%d %H:%M")
             is_night = not (6 <= self.clock.hour < 18)
@@ -579,10 +597,17 @@ class DAGSmallvilleSimulation(SinaSimulation):
             print(f"  ⏱ Tick {self.tick_count} | {time_str} | {period} | 天气: {weather} (DAG Engine)")
             print(f"{'─' * 60}")
 
-            await engine.run(
-                start_node="EnvTick",
-                initial_state={"sim": self, "target_ticks": self.tick_count - 1 + ticks}
-            )
+            try:
+                await engine.run(
+                    start_node="EnvTick",
+                    initial_state={"sim": self, "target_ticks": self.tick_count - 1 + ticks}
+                )
+            except Exception:
+                # 时钟未推进说明本帧的 ClockTickNode 未完成，回滚预自增的计数，
+                # 保持 tick_count 与 clock 同步后把失败向上抛出（由 step/API 显式暴露）。
+                if self.clock == before_clock:
+                    self.tick_count = before_tick
+                raise
 
         print("\n" + "=" * 60)
         print("  🏁 模拟结束 (DAG 引擎安全停机)")

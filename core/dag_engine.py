@@ -49,9 +49,11 @@ class DAGEngine:
                 current_node_name = result.next_node
 
             except Exception as e:
+                # 不再静默 break：节点异常必须冒泡，否则调用方会把「失败的一帧」当作成功，
+                # 导致 tick_count 已自增而 clock 未推进的失步，并复用陈旧的 current_logs。
                 print(f"[Engine] Fatal Error in {current_node_name}: {e}")
                 import traceback
                 traceback.print_exc()
-                break
+                raise RuntimeError(f"DAG 节点 '{current_node_name}' 执行失败: {e}") from e
 
         return self.global_state
