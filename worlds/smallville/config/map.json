@@ -1,5 +1,9 @@
 {
   "name": "Smallville",
+  "restock_rules": [
+    {"node": "Cafe", "items": {"COFFEE": 1, "PASTRY": 1}},
+    {"node": "Supermarket", "items": {"BREAD": 1, "APPLE": 1}}
+  ],
   "children": [
     {
       "name": "Downtown",

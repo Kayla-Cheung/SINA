@@ -321,16 +321,14 @@ class EnvTickNode(DAGNode):
         current_season = SEASON_NAMES[season_index(sim.tick_count)]
         state["current_season"] = current_season
 
-        # 商业节点资源补给 (如 Cafe, Supermarket)
-        cafe_node = sim.environment.get_node_by_name("Cafe")
-        if cafe_node:
-            cafe_node.inventory["COFFEE"] = cafe_node.inventory.get("COFFEE", 0) + 1
-            cafe_node.inventory["PASTRY"] = cafe_node.inventory.get("PASTRY", 0) + 1
-
-        market_node = sim.environment.get_node_by_name("Supermarket")
-        if market_node:
-            market_node.inventory["BREAD"] = market_node.inventory.get("BREAD", 0) + 1
-            market_node.inventory["APPLE"] = market_node.inventory.get("APPLE", 0) + 1
+        # 资源补给：由 map.json 顶层 restock_rules 声明哪些节点补给什么，
+        # 不再硬编码 Cafe/Supermarket，保持引擎领域无关（见 #52）。
+        for rule in sim.environment.restock_rules:
+            node = sim.environment.get_node_by_name(rule.get("node"))
+            if node is None:
+                continue
+            for tag, qty in (rule.get("items") or {}).items():
+                node.inventory[tag] = node.inventory.get(tag, 0) + qty
 
         return NodeResult(next_node="AgentThink")
 

@@ -38,6 +38,9 @@ class SandboxEnvironment:
     def __init__(self, world_name: str = "smallville"):
         self.root = EnvNode('World_Matrix')
         self.agent_locations: dict[str, EnvNode] = {}
+        # 资源补给规则由 map.json 顶层 restock_rules 声明（见 #52），
+        # 引擎不再硬编码 Cafe/Supermarket。缺失时按空规则处理。
+        self.restock_rules: list[dict] = []
 
         # 动态加载地图 JSON
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +49,7 @@ class SandboxEnvironment:
         if os.path.exists(map_path):
             with open(map_path, "r", encoding="utf-8") as f:
                 map_data = json.load(f)
+            self.restock_rules = map_data.get("restock_rules", [])
             self._build_tree(self.root, map_data.get("children", []))
         else:
             print(f"⚠ Warning: Map config not found at {map_path}")

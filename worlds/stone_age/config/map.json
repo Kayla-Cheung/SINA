@@ -1,5 +1,6 @@
 {
   "name": "World_Matrix",
+  "restock_rules": [],
   "children": [
     {
       "name": "Wildlands",
