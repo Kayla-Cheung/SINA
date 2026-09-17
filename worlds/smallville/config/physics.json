@@ -6,6 +6,8 @@
     "LAPTOP": {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
     "MONEY": {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
     "BOOK": {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
+    "NOTEBOOK": {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
+    "TOOLBOX": {"nutrition": 0, "spoil_rate": 0.0, "disease_chance": 0.0},
     "BREAD": {"nutrition": 8, "spoil_rate": 0.1, "disease_chance": 0.0},
     "WATER": {"nutrition": 2, "spoil_rate": 0.0, "disease_chance": 0.0},
     "APPLE": {"nutrition": 5, "spoil_rate": 0.15, "disease_chance": 0.0},
