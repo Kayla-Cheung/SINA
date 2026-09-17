@@ -404,42 +404,98 @@ class RealityCheckMiddleware:
     Intercepts Agent actions BEFORE settlement, comparing narrative intent
     against absolute physical world state to prevent Self-fulfilling Memory Hallucinations.
     """
-    def check(self, action_text: str, thought_text: str, agent_state: dict, room_state: dict) -> RealityCheckResult:
-        flags = []
+    def check(
+        self,
+        action_text: str,
+        thought_text: str,
+        agent_state: dict,
+        room_state: dict,
+        action: Optional[Dict[str, Any]] = None,
+    ) -> RealityCheckResult:
+        flags: List[str] = []
         combined_text = (action_text + " " + thought_text).lower()
 
-        # 1. Target presence & location
         agents_present = [a.lower() for a in room_state.get("agents_present", [])]
         agents_known = [a.lower() for a in room_state.get("agents_known", [])]
-
-        for a in agents_known:
-            if a in combined_text and a not in agents_present:
-                flags.append(f"Target not in same room: {a}")
-
-        # 2. Target status (alive/dead)
         agents_dead = [a.lower() for a in room_state.get("agents_dead", [])]
-        for a in agents_dead:
-            if a in combined_text:
-                flags.append(f"Target is dead: {a}")
-
-        # 3. Inventory & environmental item interaction
         inventory = [i.lower() for i in agent_state.get("inventory", [])]
         known_items = [i.lower() for i in room_state.get("known_items", [])]
         room_items = [i.lower() for i in room_state.get("room_items", [])]
 
-        pickup_keywords = ["捡起", "拾取", "拿起", "采摘", "采集", "搜寻", "从地上", "从桌上", "pick", "take", "gather", "forage", "grab", "collect"]
-        is_acquisition = any(kw in combined_text for kw in pickup_keywords)
+        if action:
+            # ── 结构化校验（结算引擎主路径）──
+            # 只针对「声明出来的交互目标/物品」做硬校验，不再对自由文本里的人名/物品
+            # 做字符串扫描。这样投票提到不在场的提案者、购买叙述提到货架商品都不会再
+            # 被误判为幻觉。
+            declared_targets: List[str] = []
+            attack_target = action.get("attack_target")
+            if attack_target:
+                declared_targets.append(str(attack_target))
 
-        for i in known_items:
-            if i in combined_text:
-                if is_acquisition:
-                    # 拾取/采集行为：物品必须存在于房间地面或当前背包中
-                    if i not in room_items and i not in inventory:
-                        flags.append(f"Target item not found in room ground or inventory: {i}")
-                else:
-                    # 消费/消耗/赠送行为：物品必须存在于智能体背包中
-                    if i not in inventory:
-                        flags.append(f"Claimed item not in inventory: {i}")
+            give_item = action.get("give_item")
+            if isinstance(give_item, dict) and give_item.get("target"):
+                declared_targets.append(str(give_item.get("target")))
+            # 兼容旧调用方的 give_target 平铺字段
+            give_target = action.get("give_target")
+            if give_target:
+                declared_targets.append(str(give_target))
+
+            for target in set(declared_targets):
+                tl = target.lower()
+                if tl not in agents_present:
+                    flags.append(f"Target not in same room: {tl}")
+                if tl in agents_dead:
+                    flags.append(f"Target is dead: {tl}")
+
+            # 拾取：只对「已知材质」做硬校验，且物品必须在房间地面。
+            # 未知 tag 交给结算引擎优雅处理（如"你想捡 X，但这里没有"），不要误杀。
+            take_tag = action.get("take_item_tag")
+            if take_tag:
+                tl = str(take_tag).lower()
+                if tl in known_items and tl not in room_items:
+                    flags.append(f"Target item not found in room ground: {tl}")
+
+            # 进食 / 放下：只对「已知材质」做硬校验，且物品必须在背包
+            for item_field in ("eat_item", "drop_item_tag"):
+                item = action.get(item_field)
+                if item:
+                    il = str(item).lower()
+                    if il in known_items and il not in inventory:
+                        flags.append(f"Claimed item not in inventory: {il}")
+
+            # 赠送：物品必须在背包
+            if isinstance(give_item, dict) and give_item.get("tag"):
+                il = str(give_item.get("tag")).lower()
+                if il in known_items and il not in inventory:
+                    flags.append(f"Claimed item not in inventory: {il}")
+            elif give_target and isinstance(give_item, str) and give_item:
+                # 旧格式 give_item 是纯字符串（物品 tag）
+                il = give_item.lower()
+                if il in known_items and il not in inventory:
+                    flags.append(f"Claimed item not in inventory: {il}")
+        else:
+            # ── 自由文本启发式（向后兼容：旧测试/外部直接调用）──
+            for a in agents_known:
+                if a in combined_text and a not in agents_present:
+                    flags.append(f"Target not in same room: {a}")
+
+            for a in agents_dead:
+                if a in combined_text:
+                    flags.append(f"Target is dead: {a}")
+
+            pickup_keywords = ["捡起", "拾取", "拿起", "采摘", "采集", "搜寻", "从地上", "从桌上", "pick", "take", "gather", "forage", "grab", "collect"]
+            is_acquisition = any(kw in combined_text for kw in pickup_keywords)
+
+            for i in known_items:
+                if i in combined_text:
+                    if is_acquisition:
+                        # 拾取/采集行为：物品必须存在于房间地面或当前背包中
+                        if i not in room_items and i not in inventory:
+                            flags.append(f"Target item not found in room ground or inventory: {i}")
+                    else:
+                        # 消费/消耗/赠送行为：物品必须存在于智能体背包中
+                        if i not in inventory:
+                            flags.append(f"Claimed item not in inventory: {i}")
 
         is_grounded = len(flags) == 0
         should_proceed = is_grounded

@@ -17,6 +17,7 @@ from core.agent_state import AgentState
 from core.physics_engine import PhysicsEngine
 from core.action_intent import ActionIntent
 from core.settlement_engine import settle_all_intents
+from core.constants import is_night as _is_night
 from sina.memory.manager import HierarchicalMemoryManager
 from sina.memory.types import PersonaInvariant, MemoryType
 from sina.observer.obsidian_vault import ObsidianVaultObserver
@@ -150,7 +151,7 @@ class StandaloneWorld:
         """Execute 1 discrete tick of simulation."""
         self.tick_count += 1
         self.clock += timedelta(minutes=15)
-        is_night = not (6 <= self.clock.hour < 21)
+        is_night = _is_night(self.clock.hour)
 
         # 1. Environment Phase: Spoilage & Town Resource Replenishment
         for node in self.environment.all_nodes():

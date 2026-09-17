@@ -11,6 +11,11 @@ import logging
 import re
 from typing import Dict, List, Optional, Any
 
+try:
+    from core.constants import season_index
+except ImportError:  # pragma: no cover - 独立运行或打包环境回退
+    from constants import season_index
+
 logger = logging.getLogger(__name__)
 
 # 写在每份生成笔记的 frontmatter 里，用于识别"这是本观察器托管的内容"。
@@ -416,7 +421,7 @@ class ObsidianVaultObserver:
         agent_links = [f"- [[Agents/{a}]] (`{sim.world_agents[a].current_action}`)" for a in sim.world_agents]
         room_links = [f"- [[Rooms/{n.name}]] (在场: {len(n.agents)}人)" for n in sim.environment.all_nodes()]
 
-        season_idx = (sim.tick_count // 24) % 4
+        season_idx = season_index(sim.tick_count)
         season_names = ["🌸 春季 (Spring)", "☀ 夏季 (Summer)", "🍂 秋季 (Autumn)", "❄ 凛冬 (Winter)"]
         current_season = season_names[season_idx]
 

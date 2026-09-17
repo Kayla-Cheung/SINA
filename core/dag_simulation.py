@@ -28,6 +28,7 @@ try:
     from .laplace_oracle import LaplaceOracle
     from .agent_state import AgentState
     from .atomic_io import atomic_write_json
+    from .constants import is_night as _is_night, season_index
 except ImportError:
     from dag_engine import DAGEngine, DAGNode, NodeResult
     from action_lease import ActionInertiaEngine, infer_action_type
@@ -40,6 +41,7 @@ except ImportError:
     from laplace_oracle import LaplaceOracle
     from agent_state import AgentState
     from atomic_io import atomic_write_json
+    from constants import is_night as _is_night, season_index
 
 from sina.memory.manager import HierarchicalMemoryManager
 from sina.memory.types import PersonaInvariant, MemoryType
@@ -286,8 +288,7 @@ class EnvTickNode(DAGNode):
                 sim.physics.resolve_spoilage(agent.inventory)
 
         seasons = ["春生", "盛夏", "秋收", "凛冬"]
-        season_index = (sim.tick_count // 40) % len(seasons)
-        current_season = seasons[season_index]
+        current_season = seasons[season_index(sim.tick_count)]
         state["current_season"] = current_season
 
         # 商业节点资源补给 (如 Cafe, Supermarket)
@@ -464,7 +465,7 @@ class PhysicsSettleNode(DAGNode):
     async def execute(self, state):
         sim = state["sim"]
         intents = state.get("current_intents", [])
-        is_night = not (6 <= sim.clock.hour < 18)
+        is_night = _is_night(sim.clock.hour)
 
         print("\n  ⚙ Phase 2: 物理结算与真实性拦截 [DAG算子]")
         if intents:
@@ -623,7 +624,7 @@ class ClockTickNode(DAGNode):
         if sim.tick_count < target_ticks:
             sim.tick_count += 1
             time_str = sim.clock.strftime("%Y-%m-%d %H:%M")
-            is_night = not (6 <= sim.clock.hour < 18)
+            is_night = _is_night(sim.clock.hour)
             period = "🌙 夜晚" if is_night else "☀ 白天"
             weather = "阴沉" if sim.tick_count % 7 == 0 else "晴朗"
 
@@ -663,7 +664,7 @@ class DAGSmallvilleSimulation(SinaSimulation):
             before_clock = self.clock
             self.tick_count += 1
             time_str = self.clock.strftime("%Y-%m-%d %H:%M")
-            is_night = not (6 <= self.clock.hour < 18)
+            is_night = _is_night(self.clock.hour)
             period = "🌙 夜晚" if is_night else "☀ 白天"
             weather = "阴沉" if self.tick_count % 7 == 0 else "晴朗"
 

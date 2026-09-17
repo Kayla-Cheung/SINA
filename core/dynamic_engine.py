@@ -12,20 +12,30 @@ try:
     from .agent_state import AgentState
     from .reflection import generate_insights
     from .gateway import gateway
+    from .constants import is_night as _is_night, season_index, TICK_MINUTES
 except ImportError:
     from agent_state import AgentState
     from reflection import generate_insights
     from gateway import gateway
+    from constants import is_night as _is_night, season_index, TICK_MINUTES
 
 
 # ──────────────────────────────────────────────
 # 记忆存储 + 反思触发
 # ──────────────────────────────────────────────
-async def store_observation(state: AgentState, text: str, sim_time: datetime):
+async def store_observation(
+    state: AgentState,
+    text: str,
+    sim_time: datetime,
+    memory_manager=None,
+    tick: int = None,
+    location: str = "unknown",
+):
     """
     将一条观察写入 agent 的记忆流。
     - 自动累积 importance；超过阈值时触发深层反思。
     - 记忆流上限 50 条，采用滑动窗口淘汰最旧记忆。
+    - 若传入 memory_manager，反思结果会同步写入 Layer 2 向量库。
     """
     entry = {
         "time": sim_time.strftime("%H:%M"),
@@ -66,6 +76,20 @@ async def store_observation(state: AgentState, text: str, sim_time: datetime):
                 state.memory_stream.append(insight_entry)
                 # 将领悟追加到 traits，影响后续决策人格
                 state.traits += f" [Deep Realization: {insight}]"
+                # 同步写入分层记忆（Layer 2 向量库），否则反思只存在于本地流，
+                # 长期记忆 / RAG / 仪表盘永远检索不到这条高级领悟。
+                if memory_manager is not None:
+                    try:
+                        from sina.memory.types import MemoryType
+                        memory_manager.record_event(
+                            agent_id=state.name,
+                            tick=tick if tick is not None else 0,
+                            content=f"[深层领悟] {insight}",
+                            memory_type=MemoryType.REFLECTION,
+                            location=location,
+                        )
+                    except Exception:
+                        pass
 
             # 【人格浓缩法则 (Semantic Compression)】防止 traits 膨胀，使用 LLM 迭代升华人格
             base_traits = re.sub(r' \[Deep Realization: .*?\]', '', state.traits)
@@ -129,13 +153,13 @@ async def determine_next_action(
       - 模因信念层（主观共识，可在内心怀疑）
     """
     time_str = current_time.strftime("%H:%M")
-    is_night = not (6 <= current_time.hour < 18)
+    is_night = _is_night(current_time.hour)
 
-    # 季节演算
+    # 季节演算（tick 长度从 constants 统一读取）
     from datetime import datetime as dt
     start_time = dt(2026, 1, 1, 6, 0)
-    ticks = int((current_time - start_time).total_seconds() / 900)
-    season_idx = (ticks // 24) % 4
+    ticks = int((current_time - start_time).total_seconds() / (TICK_MINUTES * 60))
+    season_idx = season_index(ticks)
     season_names = ["春季(丰饶，遍地浆果)", "夏季(温暖，适宜囤粮)", "秋季(衰退，资源减产)", "凛冬(死亡，严寒且没有任何植物生长)"]
     current_season = season_names[season_idx]
 

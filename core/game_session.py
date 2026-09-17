@@ -140,8 +140,8 @@ def _memory_entry(content: str, timestamp: str, frame: int, is_reflection: bool 
 def _agent_short_term(sim, agent) -> list[dict]:
     clock_str = sim.clock.strftime("%H:%M")
     bm = sim.memory_manager._bifurcation_managers.get(agent.name)
-    if bm and bm.working_queue:
-        entries = []
+    entries = []
+    if bm:
         for item in bm.working_queue[-8:]:
             entries.append(_memory_entry(
                 content=item.content,
@@ -149,8 +149,8 @@ def _agent_short_term(sim, agent) -> list[dict]:
                 frame=int(getattr(item, "tick", sim.tick_count) or 0),
                 is_reflection=getattr(item, "memory_type", None) == MemoryType.REFLECTION,
             ))
-        return entries
-    entries = []
+    # 本地记忆流也一并合并：此前一旦 working_queue 非空就提前 return，
+    # 导致 store_observation 写入的 [深层领悟] 反思永远进不了仪表盘。
     for mem in agent.memory_stream[-8:]:
         if isinstance(mem, dict):
             text = mem.get("content") or mem.get("text") or str(mem)
@@ -163,7 +163,13 @@ def _agent_short_term(sim, agent) -> list[dict]:
             frame = int(getattr(mem, "frame", sim.tick_count) or 0)
             is_ref = bool(getattr(mem, "is_reflection", False))
         entries.append(_memory_entry(str(text), str(ts), frame, is_ref))
-    return entries
+
+    # 两条流会写入同一条 memory_text，按 (content, frame) 去重后按时间排序取最近 8 条。
+    deduped = {}
+    for e in entries:
+        deduped.setdefault((e["content"], e["frame"]), e)
+    merged = sorted(deduped.values(), key=lambda e: e["frame"])
+    return merged[-8:]
 
 
 def _time_of_day(clock: datetime) -> str:

@@ -18,8 +18,15 @@ except ImportError:
     try:
         from dynamic_engine import store_observation
     except ImportError:
-        async def store_observation(agent: AgentState, text: str, clock: datetime):
-            """将观察写入记忆流并增加重要性"""
+        async def store_observation(
+            agent: AgentState,
+            text: str,
+            clock: datetime,
+            memory_manager=None,
+            tick: int = None,
+            location: str = "unknown",
+        ):
+            """将观察写入记忆流并增加重要性（降级回退实现，不含反思提炼）。"""
             agent.memory_stream.append({
                 "time": clock.strftime("%H:%M"),
                 "text": text,
@@ -67,11 +74,14 @@ async def settle_all_intents(
             agent_state={"inventory": list(agent.inventory.keys())},
             room_state={
                 "agents_present": list(current_node.agents),
-                "agents_known": list(world_agents.keys()),
+                # 感知集合只能是同房间的人：把「全世界的智能体」当作 agents_known，
+                # 会让"投票给不在场的提案者""提到远处的熟人"这类合法叙述被误判为幻觉。
+                "agents_known": list(current_node.agents),
                 "agents_dead": [a.name for a in world_agents.values() if a.is_dead],
                 "known_items": list(getattr(physics, "material_properties", {}).keys()),
                 "room_items": list(current_node.inventory.keys()),
             },
+            action=action,
         )
         if not check_res.should_proceed:
             intent.raw_action["observable_action"] = check_res.rectified_action
@@ -332,9 +342,15 @@ async def settle_all_intents(
             memory_text += f" | 内心: {internal}"
 
         # 始终写入智能体本地记忆流并驱动反思提炼引擎
-        await store_observation(agent, memory_text, clock)
+        await store_observation(
+            agent, memory_text, clock,
+            memory_manager=memory_manager, tick=tick, location=current_node.name,
+        )
         for event in feedback_events:
-            await store_observation(agent, event, clock)
+            await store_observation(
+                agent, event, clock,
+                memory_manager=memory_manager, tick=tick, location=current_node.name,
+            )
 
         # 同时向分层记忆系统同步
         if memory_manager is not None:
