@@ -8,9 +8,9 @@ interface Props {
 }
 
 export function Settings({ onSave, getConfig, disabled }: Props) {
-  const [baseUrl, setBaseUrl] = useState('https://api.deepseek.com/v1')
+  const [baseUrl, setBaseUrl] = useState('https://api.siliconflow.cn/v1')
   const [apiKey, setApiKey] = useState('')
-  const [model, setModel] = useState('deepseek-v4-flash')
+  const [model, setModel] = useState('Qwen/Qwen2.5-7B-Instruct')
   const [thinkingEnabled, setThinkingEnabled] = useState(false)
   const [embeddingProvider, setEmbeddingProvider] = useState<'google' | 'openai'>('google')
   const [embeddingBaseUrl, setEmbeddingBaseUrl] = useState('https://generativelanguage.googleapis.com/v1beta')
