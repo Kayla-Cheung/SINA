@@ -7,13 +7,37 @@ from typing import Any, Dict, Optional, Literal
 from pydantic import BaseModel, Field
 
 try:
-    from .models import AgentState, ToolCall
+    from .models import ToolCall
     from .parse_tool import parse_tool_call_from_dict
     from .gateway import gateway
 except ImportError:
-    from models import AgentState, ToolCall
+    from models import ToolCall
     from parse_tool import parse_tool_call_from_dict
     from gateway import gateway
+
+
+def _agent_identifier(agent: Any, observation: Dict[str, Any]) -> str:
+    """取智能体标识：让两种 AgentState 定义都能用。
+
+    core/models.py 的 Pydantic AgentState 有 id；core/agent_state.py 的运行时
+    AgentState 只有 name（被 sim.world_agents 实际持有）。这里不再硬编码属性名。
+    """
+    return (
+        getattr(agent, "id", None)
+        or getattr(agent, "name", None)
+        or observation.get("agent_id")
+        or "unknown"
+    )
+
+
+def _agent_location(agent: Any, observation: Dict[str, Any]) -> str:
+    """取当前位置：运行时 AgentState 没有 current_location，回落到 observation。"""
+    return (
+        getattr(agent, "current_location", None)
+        or observation.get("current_location")
+        or observation.get("location")
+        or "unknown"
+    )
 
 
 @dataclass
@@ -65,7 +89,7 @@ Rules:
         # llm parameter is ignored in favor of the singleton gateway
         pass
 
-    def _format_observation(self, obs: Dict[str, Any], agent: AgentState) -> str:
+    def _format_observation(self, obs: Dict[str, Any], agent: Any) -> str:
         locs = obs.get("locations") or []
         chars = obs.get("characters") or []
         objs = obs.get("objects") or []
@@ -79,8 +103,8 @@ Rules:
         obj_lines = (
             "\n".join(f"- {x['name']} (id={x['id']})" for x in objs) or "- (none)"
         )
-        return f"""Character: {agent.name} (id={agent.id})
-Current location id: {agent.current_location}
+        return f"""Character: {getattr(agent, 'name', 'unknown')} (id={_agent_identifier(agent, obs)})
+Current location id: {_agent_location(agent, obs)}
 
 Adjacent locations:
 {loc_lines}
@@ -94,17 +118,18 @@ Objects present:
     async def translate(
         self,
         intention: str,
-        agent: AgentState,
+        agent: Any,
         observation: Dict[str, Any],
     ) -> GodDecision:
-        user = f"""{self._format_observation(observation, agent)}
+        try:
+            # observation 构造也放进 try：它同样可能因为传入不合规的 agent/observation
+            # 而抛异常，之前位于 try 之外会直接冒泡到调用方。
+            user = f"""{self._format_observation(observation, agent)}
 
 Character's intention (natural language):
 \"\"\"{intention.strip()}\"\"\"
 
 Decide: 'action', 'idle', or 'reject'."""
-
-        try:
             output = await gateway.generate_structured(
                 system_prompt=self.SYSTEM,
                 user_prompt=user,
@@ -114,7 +139,7 @@ Decide: 'action', 'idle', or 'reject'."""
         except Exception as e:
             return GodDecision(
                 kind="reject",
-                reason=f"God agent LLM error: {e}",
+                reason=f"God agent error: {e}",
                 raw_response="",
             )
 

@@ -355,6 +355,24 @@ class PhysicsEngine:
         return spoiled
 
     # ────────────────────────────────────────
+    #  产出白名单
+    # ────────────────────────────────────────
+
+    def is_producible(self, item_tag: str) -> bool:
+        """判断某个 tag 能否通过「劳动」凭空产出。
+
+        白名单 = 已定义材质（可从环境采集的天然物）+ 所有已发现配方的产出。
+        没有这层校验，LLM 只要在 intent 里写 produce_item_tag 就能凭空生成任意
+        物品（"钻石"、"手机"），经济系统可被无限刷爆；对照 resolve_eat 对未知
+        物品判中毒，产出侧也必须受同一张材质表的约束。
+        """
+        if not item_tag:
+            return False
+        if item_tag in self.material_properties:
+            return True
+        return any(item_tag in recipe.outputs for recipe in self.recipes)
+
+    # ────────────────────────────────────────
     #  配方描述（供 LLM prompt 注入）
     # ────────────────────────────────────────
 

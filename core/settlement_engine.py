@@ -145,10 +145,18 @@ async def settle_all_intents(
         # ────────────────────────────────────
         produce_tag = action.get("produce_item_tag")
         if produce_tag:
-            agent.hunger -= 1
-            agent.inventory[produce_tag] = agent.inventory.get(produce_tag, 0) + 1
-            feedback_events.append(f"[物理现实] 你消耗体力，从环境中获取了一份 {produce_tag}。")
-            logs.append(f"  [生产] {agent_name} 消耗体力生产了 {produce_tag}。")
+            # 白名单校验：只有材质表内的天然物、或已发现配方的产出才能凭空产出。
+            # 否则 LLM 在 intent 里随便写个 tag 就能造物，绕过整个经济系统。
+            if physics.is_producible(produce_tag):
+                agent.hunger -= 1
+                agent.inventory[produce_tag] = agent.inventory.get(produce_tag, 0) + 1
+                feedback_events.append(f"[物理现实] 你消耗体力，从环境中获取了一份 {produce_tag}。")
+                logs.append(f"  [生产] {agent_name} 消耗体力生产了 {produce_tag}。")
+            else:
+                feedback_events.append(
+                    f"[物理现实] 你想凭空造出 {produce_tag}，但物理法则不承认这种东西。"
+                )
+                logs.append(f"  [生产失败] {agent_name} 试图产出未定义的物品 {produce_tag}，已被物理法则驳回。")
 
         # ────────────────────────────────────
         # 5. 合成/制造结算（阶段 B）
