@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +42,29 @@ def data_dir() -> Path:
 def saves_dir() -> Path:
     path = data_dir() / "saves"
     path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+# game_id 只允许这套字符集：既排除了路径分隔符与 ".."，也排除了 Windows 非法字符 :*?"<>|
+_GAME_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def is_valid_game_id(game_id: Any) -> bool:
+    return isinstance(game_id, str) and bool(_GAME_ID_RE.match(game_id))
+
+
+def _save_path(game_id: str, suffix: str = ".json") -> Path:
+    """把 game_id 解析为 saves_dir 内的安全路径，阻断 `../` 与绝对路径穿越。
+
+    未经校验的 game_id 曾可让 download/continue/delete 读到或删掉保存目录之外的
+    任意 .json（Windows 上反斜杠同样被 pathlib 当分隔符）。
+    """
+    if not is_valid_game_id(game_id):
+        raise ValueError(f"Invalid game_id: {game_id!r}")
+    root = saves_dir().resolve()
+    path = (root / f"{game_id}{suffix}").resolve()
+    if path.parent != root:
+        raise ValueError(f"Invalid game_id: {game_id!r}")
     return path
 
 
@@ -320,7 +344,7 @@ def load_world_into_sim(sim, world: dict) -> None:
 
 
 def persist_memories(sim, game_id: str) -> None:
-    db_path = saves_dir() / f"{game_id}.memories.db"
+    db_path = _save_path(game_id, ".memories.db")
     try:
         sim.memory_manager.vector_store.persist_to_sqlite(str(db_path), game_id)
     except Exception:
@@ -328,7 +352,7 @@ def persist_memories(sim, game_id: str) -> None:
 
 
 def restore_memories(sim, game_id: str) -> None:
-    db_path = saves_dir() / f"{game_id}.memories.db"
+    db_path = _save_path(game_id, ".memories.db")
     if not db_path.exists():
         return
     try:
@@ -359,7 +383,7 @@ class GameSession:
 
     def persist(self) -> None:
         payload = self.to_save_payload()
-        path = saves_dir() / f"{self.game_id}.json"
+        path = _save_path(self.game_id)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
         persist_memories(self.sim, self.game_id)
@@ -420,18 +444,22 @@ class SessionManager:
     def get_llm_config(self) -> dict:
         return {"success": True, "config": get_gateway().public_config()}
 
-    def create_game(self, map_config: Optional[dict] = None, start_time: Optional[str] = None) -> dict:
+    async def create_game(self, map_config: Optional[dict] = None, start_time: Optional[str] = None) -> dict:
         world_name = resolve_world_name((map_config or {}).get("name"))
+        # 重量级构建放在锁外，只在替换当前会话的瞬间持锁。
         sim = DAGSmallvilleSimulation(world_name=world_name, resume=False)
         apply_start_time(sim, start_time)
         game_id = f"{world_name}-{uuid.uuid4().hex[:8]}"
-        self.current = GameSession(sim, game_id)
-        self.current.persist()
-        state = self.current.snapshot()
+        session = GameSession(sim, game_id)
+        async with self._step_lock:
+            self.current = session
+            session.persist()
+            state = session.snapshot()
         return {"game_id": game_id, "state": state}
 
-    def abandon(self) -> dict:
-        self.current = None
+    async def abandon(self) -> dict:
+        async with self._step_lock:
+            self.current = None
         return {"success": True}
 
     def get_current(self) -> dict:
@@ -442,7 +470,10 @@ class SessionManager:
     def get_game(self, game_id: str) -> Optional[dict]:
         if self.current and self.current.game_id == game_id:
             return self.current.snapshot()
-        path = saves_dir() / f"{game_id}.json"
+        try:
+            path = _save_path(game_id)
+        except ValueError:
+            return None
         if path.exists():
             try:
                 with open(path, "r", encoding="utf-8") as f:
@@ -463,12 +494,17 @@ class SessionManager:
         steps = max(1, int(steps or 1))
         results = []
         async with self._step_lock:
+            # 锁内重新取一次会话，整个循环只用这个局部引用：否则 create_game/abandon
+            # 在帧中途替换 self.current 会让帧日志写进别的游戏，或 AttributeError → 500。
+            session = self.current
+            if not session or session.game_id != game_id:
+                raise KeyError(game_id)
             for _ in range(steps):
-                await self.current.sim.run_dag_loop(1)
-                entry = self.current.append_frame_log()
+                await session.sim.run_dag_loop(1)
+                entry = session.append_frame_log()
                 results.append(entry)
-                self.current.persist()
-                state = self.current.snapshot()
+                session.persist()
+                state = session.snapshot()
                 if on_frame:
                     await on_frame(state)
         return {
@@ -500,69 +536,77 @@ class SessionManager:
             })
         return {"saves": items}
 
-    def _attach_from_payload(self, data: dict, game_id: Optional[str] = None) -> dict:
+    async def _attach_from_payload(self, data: dict, game_id: Optional[str] = None) -> dict:
         world = data.get("world")
         if not world:
             raise ValueError("Save file is missing world snapshot")
         world_name = resolve_world_name(data.get("world_name") or world.get("world_name"))
         sim = DAGSmallvilleSimulation(world_name=world_name, resume=False)
         load_world_into_sim(sim, world)
-        gid = game_id or data.get("game_id") or f"{world_name}-{uuid.uuid4().hex[:8]}"
+        # 导入的存档里 game_id 不可信：非法时丢弃并重新生成，避免它被用作落盘路径。
+        gid = game_id or data.get("game_id")
+        if not is_valid_game_id(gid):
+            gid = f"{world_name}-{uuid.uuid4().hex[:8]}"
         restore_memories(sim, gid)
         logs = data.get("logs") or (data.get("state") or {}).get("logs") or []
-        self.current = GameSession(sim, gid, logs=logs)
-        self.current.persist()
-        return {"game_id": gid, "state": self.current.snapshot()}
+        session = GameSession(sim, gid, logs=logs)
+        async with self._step_lock:
+            self.current = session
+            session.persist()
+            state = session.snapshot()
+        return {"game_id": gid, "state": state}
 
-    def continue_save(self, game_id: str) -> dict:
-        path = saves_dir() / f"{game_id}.json"
+    async def continue_save(self, game_id: str) -> dict:
+        path = _save_path(game_id)
         if not path.exists():
             raise KeyError(game_id)
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return self._attach_from_payload(data, game_id=game_id)
+        return await self._attach_from_payload(data, game_id=game_id)
 
-    def import_save(self, payload: Any) -> dict:
+    async def import_save(self, payload: Any) -> dict:
         if not isinstance(payload, dict):
             raise ValueError("Invalid save payload")
         data = payload
         if "world" not in data and "state" in payload and isinstance(payload["state"], dict) and "world" in payload["state"]:
             data = payload["state"]
-        return self._attach_from_payload(data)
+        return await self._attach_from_payload(data)
 
-    def delete_save(self, game_id: str) -> dict:
-        path = saves_dir() / f"{game_id}.json"
-        mem = saves_dir() / f"{game_id}.memories.db"
-        deleted = False
-        if path.exists():
-            path.unlink()
-            deleted = True
-        if mem.exists():
-            mem.unlink()
-        if self.current and self.current.game_id == game_id:
-            self.current = None
-        if not deleted:
-            raise KeyError(game_id)
+    async def delete_save(self, game_id: str) -> dict:
+        path = _save_path(game_id)
+        mem = _save_path(game_id, ".memories.db")
+        async with self._step_lock:
+            deleted = False
+            if path.exists():
+                path.unlink()
+                deleted = True
+            if mem.exists():
+                mem.unlink()
+            if self.current and self.current.game_id == game_id:
+                self.current = None
+            if not deleted:
+                raise KeyError(game_id)
         return {"success": True}
 
-    def clear_saves(self) -> dict:
+    async def clear_saves(self) -> dict:
         saves_deleted = 0
         memories_deleted = 0
-        for path in saves_dir().glob("*.json"):
-            if path.name.startswith("_"):
-                continue
-            path.unlink()
-            saves_deleted += 1
-        for path in saves_dir().glob("*.memories.db"):
-            path.unlink()
-            memories_deleted += 1
-        self.current = None
+        async with self._step_lock:
+            for path in saves_dir().glob("*.json"):
+                if path.name.startswith("_"):
+                    continue
+                path.unlink()
+                saves_deleted += 1
+            for path in saves_dir().glob("*.memories.db"):
+                path.unlink()
+                memories_deleted += 1
+            self.current = None
         return {"success": True, "saves_deleted": saves_deleted, "memories_deleted": memories_deleted}
 
     def download_save(self, game_id: str) -> dict:
         if self.current and self.current.game_id == game_id:
             return self.current.to_save_payload()
-        path = saves_dir() / f"{game_id}.json"
+        path = _save_path(game_id)
         if not path.exists():
             raise KeyError(game_id)
         with open(path, "r", encoding="utf-8") as f:

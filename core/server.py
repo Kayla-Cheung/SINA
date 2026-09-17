@@ -99,12 +99,12 @@ async def get_current_game():
 
 @app.post("/api/games")
 async def create_game(body: CreateGameIn):
-    return get_manager().create_game(map_config=body.map_config, start_time=body.start_time)
+    return await get_manager().create_game(map_config=body.map_config, start_time=body.start_time)
 
 
 @app.post("/api/games/abandon")
 async def abandon_game():
-    return get_manager().abandon()
+    return await get_manager().abandon()
 
 
 @app.get("/api/games/{game_id}")
@@ -143,7 +143,7 @@ async def get_saves():
 @app.post("/api/saves/import")
 async def import_save(payload: dict[str, Any]):
     try:
-        return get_manager().import_save(payload)
+        return await get_manager().import_save(payload)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except KeyError:
@@ -152,13 +152,13 @@ async def import_save(payload: dict[str, Any]):
 
 @app.post("/api/saves/clear")
 async def clear_saves():
-    return get_manager().clear_saves()
+    return await get_manager().clear_saves()
 
 
 @app.post("/api/saves/{game_id}/continue")
 async def continue_save(game_id: str):
     try:
-        return get_manager().continue_save(game_id)
+        return await get_manager().continue_save(game_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Save not found")
     except ValueError as e:
@@ -168,9 +168,11 @@ async def continue_save(game_id: str):
 @app.delete("/api/saves/{game_id}")
 async def delete_save(game_id: str):
     try:
-        return get_manager().delete_save(game_id)
+        return await get_manager().delete_save(game_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Save not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/saves/{game_id}/download")
@@ -179,6 +181,8 @@ async def download_save(game_id: str):
         return get_manager().download_save(game_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Save not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/agents/{agent_id}/memories")
