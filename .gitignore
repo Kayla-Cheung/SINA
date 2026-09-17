@@ -18,6 +18,7 @@ ENV/
 *.sqlite3
 logs/
 .DS_Store
+.vscode/
 data/saves/
 data/llm_config.json
 
