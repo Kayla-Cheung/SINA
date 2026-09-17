@@ -18,7 +18,7 @@ from typing import Optional
 
 try:
     from .dag_engine import DAGEngine, DAGNode, NodeResult
-    from .action_lease import ActionInertiaEngine
+    from .action_lease import ActionInertiaEngine, infer_action_type
     from .action_intent import ActionIntent
     from .dynamic_engine import determine_next_action
     from .settlement_engine import settle_all_intents
@@ -30,7 +30,7 @@ try:
     from .atomic_io import atomic_write_json
 except ImportError:
     from dag_engine import DAGEngine, DAGNode, NodeResult
-    from action_lease import ActionInertiaEngine
+    from action_lease import ActionInertiaEngine, infer_action_type
     from action_intent import ActionIntent
     from dynamic_engine import determine_next_action
     from settlement_engine import settle_all_intents
@@ -358,12 +358,14 @@ class AgentThinkNode(DAGNode):
             # 4. 租约有效且未受致命扰动：跳过 LLM，由底层物理 FSM 推进
             if not need_think and active_lease:
                 print(f"    ⏳ {name} [租约惯性: 剩余{active_lease.ticks_remaining}帧] {active_lease.description}")
+                # 惯性 tick 必须携带完整结构化动作（move_to/eat_item/take_item_tag
+                # /produce_item_tag/craft 等），否则物理层无从结算，多 tick 租约等于空转。
+                lease_payload = dict(active_lease.payload or {})
+                lease_payload["internal_thought"] = f"[惯性执行中] {active_lease.description}"
+                lease_payload["observable_action"] = active_lease.description
                 intents.append(ActionIntent(
                     agent_name=name,
-                    raw_action={
-                        "internal_thought": f"[惯性执行中] {active_lease.description}",
-                        "observable_action": active_lease.description,
-                    },
+                    raw_action=lease_payload,
                     source_room=current_room,
                 ))
                 continue
@@ -425,9 +427,10 @@ class AgentThinkNode(DAGNode):
 
                 # 颁发新的多 Tick 行动租约
                 duration_ticks = max(1, duration // 15)
+                action_type = action.get("action_type") or infer_action_type(action)
                 sim.action_inertia_engine.grant_lease(
                     agent_name=_agent.name,
-                    action_type=action.get("action_type", "wander"),
+                    action_type=action_type,
                     description=action_desc,
                     duration_ticks=duration_ticks,
                     payload=action,

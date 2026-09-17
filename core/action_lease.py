@@ -16,6 +16,26 @@ from typing import Optional, Dict, Any, List, Tuple
 from pydantic import BaseModel, Field
 
 
+def infer_action_type(action: Dict[str, Any]) -> str:
+    """从结构化动作字段推断租约类型，供 DEFAULT_LEASE_DURATIONS 索引。
+
+    ActionSchema 没有 action_type 字段，此前 grant_lease 只能拿到默认
+    "wander"，导致 DEFAULT_LEASE_DURATIONS 这张表从未生效。这里从 move_to /
+    craft / 采集等结构字段反推，让惯性时长表真正被读取。
+    """
+    if not action:
+        return "wander"
+    if action.get("move_to"):
+        return "walk"
+    if action.get("craft"):
+        return "craft"
+    if action.get("take_item_tag") or action.get("produce_item_tag"):
+        return "forage"
+    if action.get("eat_item") or action.get("attack_target"):
+        return "idle"
+    return "wander"
+
+
 class InterruptionType(str, Enum):
     """突发扰动事件分类与优先级"""
     DAMAGE_TAKEN = "DAMAGE_TAKEN"           # 受到物理伤害 / 野兽袭击 (Priority 5, 致命)
