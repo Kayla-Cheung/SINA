@@ -65,9 +65,9 @@ graph TD
 
 ### 1. 分层记忆 (`sina.memory`)
 * **Layer 0 `PersonaInvariant`**：不可变的人格锚点，防止长 tick 推演中人格漂移。
-* **Layer 1 `BifurcationManager`**：实时监控 token 预算。当工作上下文 $S_t > \theta$ 时，把历史切片蒸馏后下沉到 Layer 2，使工作上下文保持有界。
+* **Layer 1 `BifurcationManager`**：实时监控 token 预算。当工作上下文 $S_t > \theta$ 时，把历史切片压缩后下沉到 Layer 2，使工作上下文保持有界（当前默认为截断拼接，LLM 蒸馏待实现，见 #55）。
 * **Layer 2 `EpisodicVectorStore`**：连续 2D NumPy 矩阵，用单次 BLAS 运算（$Q \cdot M^T$）做批量余弦相似度检索；冷数据持久化到 SQLite。
-* **阶层门控衰减 (`ClassGatedDecayEngine`)**：富裕智能体记忆保真度高；低阶层智能体的记忆按半衰期指数衰减，在记忆缺口处生成合理化叙事（即虚构）。
+* **阶层门控衰减 (`ClassGatedDecayEngine`)**：富裕智能体记忆保真度高；低阶层智能体的记忆按半衰期指数衰减，在记忆缺口处按原型模板生成合理化叙事（即虚构；当前为模板、非 LLM 叙事，见 #56）。
 
 ### 2. DAG 并发与物理结算 (`core/`)
 * **并行意图生成**：`AgentThinkNode` 并发评估环境刺激。

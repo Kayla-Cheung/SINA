@@ -2,7 +2,7 @@
 SINA v4 Memory Subsystem: Class-Gated Decay & Confabulation Engine.
 Implements Axiom 2 (Resource Scarcity) and Class-Gated Memory Fidelity.
 Lower-class agents suffer from higher exponential decay, memory dropout,
-and are compelled to confabulate (hallucinate rationalized memories) under cognitive deficit.
+and are compelled to confabulate (template-generated rationalized memories) under cognitive deficit.
 """
 
 import math
@@ -107,8 +107,10 @@ class ClassGatedDecayEngine:
         reason: str = "Cognitive gap filled under survival stress",
     ) -> EpisodicMemory:
         """
-        Synthesize a confabulated (false) episodic memory to simulate rationalized false consciousness
-        when memory recall is insufficient and class index is low.
+        Synthesize a confabulated (false) episodic memory to simulate rationalized false
+        consciousness when memory recall is insufficient and class index is low.
+
+        注意：当前实现是按 archetype 分支的固定模板字符串，非 LLM 叙事（见 #56）。
         """
         confab_id = f"confab_{persona.agent_id}_{query.current_tick}_{random.randint(1000, 9999)}"
 

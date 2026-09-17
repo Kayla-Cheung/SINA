@@ -23,7 +23,10 @@ class BifurcationManager:
     """
     Manages the Working Memory (Layer 1) stream for a single agent.
     Performs dynamic token monitoring, sliding-window partitioning,
-    and automatic distillation into Episodic Memory (Layer 2).
+    and automatic compaction into Episodic Memory (Layer 2).
+
+    注意：默认 compactor 是截断拼接（各取前 3 条），不是语义蒸馏；
+    通过注入 ``compaction_fn`` 可替换为 LLM 蒸馏（见 #55）。
     """
 
     def __init__(
@@ -85,7 +88,7 @@ class BifurcationManager:
         # Recalculate working tokens
         self._total_tokens = sum(item.estimated_tokens for item in self._working_queue)
 
-        # Distill stale items into a structured episode
+        # Compact stale items into a structured episode（默认截断拼接，非语义蒸馏）
         episodic_entry = self._distill_slice(stale_slice)
 
         # Sinks to Layer 2 vector store
@@ -94,7 +97,11 @@ class BifurcationManager:
         return episodic_entry
 
     def _distill_slice(self, items: List[WorkingMemoryItem]) -> EpisodicMemory:
-        """Distill raw working items into a unified episodic memory entry."""
+        """Compact raw working items into a unified episodic memory entry.
+
+        方法名沿用 "distill"，但默认实现（_default_compactor）是截断拼接，
+        只有注入 compaction_fn 后才可能是真正的语义蒸馏（见 #55）。
+        """
         tick_start = items[0].tick
         tick_end = items[-1].tick
 
@@ -111,7 +118,8 @@ class BifurcationManager:
         # Compact summary text
         summary = self.compaction_fn(items, self.persona)
 
-        # Calculate average emotional tone or heuristic importance
+        # 启发式重要性/情感价：目前是硬编码常量（有无对话 → 7.0/5.0，valence 恒为 0），
+        # 尚未按内容估计，见 #57。
         has_dialogue = any(it.memory_type == MemoryType.DIALOGUE for it in items)
         importance = 7.0 if has_dialogue else 5.0
 
@@ -131,8 +139,8 @@ class BifurcationManager:
 
     def _default_compactor(self, items: List[WorkingMemoryItem], persona: PersonaInvariant) -> str:
         """
-        Deterministic, structured summarizer without requiring immediate external LLM calls.
-        Can be overridden with an asynchronous LLM call.
+        默认压缩实现：确定性截断拼接（observations/actions/dialogues 各取前 3 条），
+        不调用 LLM、不做语义概括。可通过 compaction_fn 注入 LLM 蒸馏（见 #55）。
         """
         actions = []
         dialogues = []
