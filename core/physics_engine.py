@@ -79,6 +79,7 @@ class PhysicsEngine:
     def __init__(self, world_name: str = "smallville"):
         import os
         import json
+        self.world_name = world_name
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         physics_path = os.path.join(base_dir, "worlds", world_name, "config", "physics.json")
 
@@ -384,19 +385,42 @@ class PhysicsEngine:
         return "\n".join(lines)
 
     # ────────────────────────────────────────
-    #  序列化（仅保存动态部分：配方列表）
+    #  序列化（世界标识 + 物理规则表 + 动态配方）
     # ────────────────────────────────────────
 
     def to_dict(self) -> dict:
-        """序列化物理引擎的动态状态（配方列表）。"""
+        """序列化物理引擎状态。
+
+        世界名与三张规则表必须一并落盘：它们原本只在构造时从 worlds/<世界>/config/physics.json
+        载入，一旦读档时构造函数拿不到同一个 world_name（旧版固定回落 smallville），
+        或者配置文件在两次运行之间被改动，同一份存档就会结算出不同的物理规则。
+        """
         return {
+            "world_name": self.world_name,
+            "material_properties": {k: dict(v) for k, v in self.material_properties.items()},
+            "terrain_hazards": {k: dict(v) for k, v in self.terrain_hazards.items()},
+            "weapon_modifiers": dict(self.weapon_modifiers),
             "recipes": [r.to_dict() for r in self.recipes],
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "PhysicsEngine":
-        """从字典反序列化。材料属性和地形由构造函数硬编码恢复。"""
-        engine = cls()
+        """从字典反序列化。
+
+        以存档内的规则表为准（无需依赖本机配置文件仍然存在且一致）；
+        旧存档缺少这些字段时，回落到该 world_name 的配置默认值。
+        """
+        engine = cls(world_name=data.get("world_name") or "smallville")
+        if "material_properties" in data:
+            engine.material_properties = {
+                k: dict(v) for k, v in data["material_properties"].items()
+            }
+        if "terrain_hazards" in data:
+            engine.terrain_hazards = {
+                k: dict(v) for k, v in data["terrain_hazards"].items()
+            }
+        if "weapon_modifiers" in data:
+            engine.weapon_modifiers = dict(data["weapon_modifiers"])
         engine.recipes = [
             Recipe.from_dict(r) for r in data.get("recipes", [])
         ]

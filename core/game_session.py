@@ -15,13 +15,13 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional
 
 try:
-    from core.dag_simulation import DAGSmallvilleSimulation
+    from core.dag_simulation import DAGSmallvilleSimulation, serialize_node_states
     from core.action_lease import ActionInertiaEngine
     from core.environment import EnvNode, SandboxEnvironment
     from core.gateway import get_gateway, reconfigure_gateway
     from core.atomic_io import atomic_write_json
 except ImportError:
-    from dag_simulation import DAGSmallvilleSimulation
+    from dag_simulation import DAGSmallvilleSimulation, serialize_node_states
     from action_lease import ActionInertiaEngine
     from environment import EnvNode, SandboxEnvironment
     from gateway import get_gateway, reconfigure_gateway
@@ -308,6 +308,9 @@ def extract_world(sim) -> dict:
         "physics": sim.physics.to_dict(),
         "meme_pool": sim.meme_pool.to_dict(),
         "agents": agents_data,
+        # 房间的地面资源/占用锁同样要落盘，否则读档会退回地图初始库存，
+        # 而智能体背包照常还原 —— 反复存读即可凭空复制物品。
+        "nodes": serialize_node_states(sim.environment),
         "tick_count": sim.tick_count,
         "world_name": getattr(sim, "world_name", "smallville"),
     }

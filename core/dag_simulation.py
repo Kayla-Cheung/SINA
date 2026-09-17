@@ -46,6 +46,41 @@ from sina.memory.types import PersonaInvariant, MemoryType
 from sina.observer.obsidian_vault import ObsidianVaultObserver
 
 
+def serialize_node_states(environment) -> list:
+    """导出所有房间的客观状态（库存 / 物件 / 占用锁）。
+
+    刻意不导出 `agents`：驻留者由每个智能体自己的 last_room 还原，
+    两边都存会在读档时把同一智能体重复计入房间。
+    """
+    return [
+        {
+            "name": node.name,
+            "inventory": dict(node.inventory),
+            "objects": list(node.objects),
+            "locked_by": node.locked_by,
+        }
+        for node in environment.all_nodes()
+    ]
+
+
+def restore_node_states(environment, nodes_data) -> None:
+    """把存档里的房间状态写回环境拓扑。
+
+    没有这一步，读档后地面资源会退回 map.json 的初始值，而智能体背包却被完整还原，
+    于是「读档取走资源 → 存档」可以无限刷物品。
+    """
+    for node_data in nodes_data or []:
+        node = environment.get_node_by_name(node_data.get("name"))
+        if node is None:
+            # 地图在两次运行之间被改动过：缺的房间按新地图的初始状态走，不报错。
+            continue
+        if "inventory" in node_data:
+            node.inventory = dict(node_data["inventory"])
+        if "objects" in node_data:
+            node.objects = list(node_data["objects"])
+        node.locked_by = node_data.get("locked_by")
+
+
 class DualLogger:
     def __init__(self, filename):
         self.terminal = sys.stdout
@@ -158,9 +193,13 @@ class SinaSimulation:
         """接受已解析的 dict，供读档路径直接灌入，无需落临时文件。"""
         self.clock = datetime.fromisoformat(data["clock"])
         if "physics" in data:
-            self.physics = PhysicsEngine.from_dict(data["physics"])
+            # 旧存档没有 world_name 字段：补上本世界的名字，避免静默回落 smallville 的规则表。
+            physics_data = dict(data["physics"])
+            physics_data.setdefault("world_name", self.world_name)
+            self.physics = PhysicsEngine.from_dict(physics_data)
         if "meme_pool" in data:
             self.meme_pool = MemePool.from_dict(data["meme_pool"])
+        restore_node_states(self.environment, data.get("nodes"))
         for agent_data in data.get("agents", []):
             agent = AgentState.from_dict(agent_data)
             self.world_agents[agent.name] = agent
@@ -209,6 +248,7 @@ class SinaSimulation:
             "physics": self.physics.to_dict(),
             "meme_pool": self.meme_pool.to_dict(),
             "agents": agents_data,
+            "nodes": serialize_node_states(self.environment),
             "tick_count": self.tick_count,
         }
         atomic_write_json(filename or self.save_file, data)
